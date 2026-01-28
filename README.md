@@ -56,12 +56,28 @@ sudo bootc rollback
 sudo bootc switch container-registry:tag
 ```
 
-## 🤖 Fluxo de Build Automatizado
-
-O processo de build utiliza cache inteligente via `type=gha`. Isso significa que:
-
-1. O GitHub checa se houve mudança no Kernel ou na lista de pacotes.
-2. Se não houver, ele reutiliza a compilação da Nvidia (economizando 20 minutos).
-3. A imagem final é publicada no **GitHub Container Registry (GHCR)**.
----
-
+## 🤖 Criar uma ISO personalizada para instalar a imagem bootc
+#### Para criar a imagem personalizada
+```
+git clone https://github.com/Ferlinuxdebian/bootc-gnome-minimal.git
+cd bootc-gnome-minimal
+mkdir output
+sudo podman build -t bootc-gnome-minimal -f Containerfile
+```
+#### Para criar a ISO de instalação 
+```
+sudo podman run \
+    --rm \
+    -it \
+    --privileged \
+    --pull=newer \
+    --security-opt label=type:unconfined_t \
+    -v ./output:/output \
+    -v ./config.toml:/config.toml:ro \
+    -v /var/lib/containers/storage:/var/lib/containers/storage \
+    quay.io/centos-bootc/bootc-image-builder:latest \
+    --type anaconda-iso \
+    --rootfs btrfs \
+    localhost/bootc-gnome-minimal
+``` 
+Após o processo de construção, basta acessar o diretório output e depois bootiso, dentro desse diretório você vai notar uma imagem ISO "install.iso", que você pode usar para instalar o sistema.
