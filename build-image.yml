@@ -1,12 +1,15 @@
 name: Build e Push da Imagem Bootc
 
 on:
+  schedule:
+    # 07:00 UTC representa 04:00 da manhã no horário de Brasília (UTC-3)
+    - cron: '0 7 * * *'
   push:
     branches:
       - main
     paths-ignore:
       - 'README.md'
-  workflow_dispatch: # Permite rodar manualmente
+  workflow_dispatch: # Permite rodar manualmente a qualquer momento
 
 env:
   REGISTRY: ghcr.io
@@ -49,8 +52,8 @@ jobs:
           context: .
           file: ./Containerfile
           push: true
-          tags: ${{ id.meta.outputs.tags }}
-          labels: ${{ id.meta.outputs.labels }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
           # Otimização de cache para builds rápidos
           cache-from: type=gha
           cache-to: type=gha,mode=max
