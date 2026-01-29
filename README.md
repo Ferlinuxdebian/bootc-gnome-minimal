@@ -16,7 +16,7 @@ Este repositório contém a "receita" para o build automatizado da minha imagem 
 | `Containerfile` | Instruções de build da imagem (instalação de pacotes e drivers). |
 | `pacotes_rpm` | Lista de aplicativos e bibliotecas que o DNF deve instalar. |
 | `post-install.sh` | Scripts de configuração pós-instalação (remover fedora flatpak, add flathub e instala os flatpaks). |
-| `build-image.yml` | Configuração do GitHub Actions para o build automático. |
+| `.github/workflows` | Contém o arquivo .yml do GitHub Actions para o build automático. |
 | `10-nvidia-args-.toml` | Configura os parâmetros para colocar nouveau no blacklist. |
 | `post-install.service` | Configura um serviço do systemd para baixar os flatpaks no primeiro boot apos instalação |
 | `vconsole.conf` | Configura o TTY para pt-BR
@@ -28,15 +28,23 @@ Este repositório contém a "receita" para o build automatizado da minha imagem 
 A imagem é reconstruída diariamente às **04h00** (horário de Brasília). Como costumo acordar entre **07h00 e 08h00**, já encontro uma atualização pronta para aplicar logo pela manhã.
 
 Além disso, configurei no GitHub Actions a integração com o bot do Telegram **@Botfather**, que me notifica automaticamente pelo Telegram sempre que o build da imagem é concluído com sucesso ou apresenta alguma falha.
+![Imagem](https://i.imgur.com/5Ip7A1N.png)
 
 #### Atualização manual 
 1. Abra o terminal.
 2. Verifique se há atualizações:
 ``` 
-sudo bootc upgrade
+sudo bootc upgrade --check
 ```
-
-3. Se houver mudanças, reinicie o computador:
+3. Realize o upgrade 
+```
+sudo bootc upgrade 
+```
+4. Verifique os pacotes que foram atualizados, após reiniciar com a nova imagem
+```
+rpm-ostree db diff
+```
+5. Se houver mudanças, reinicie o computador:
 ```
 sudo reboot
 ```
