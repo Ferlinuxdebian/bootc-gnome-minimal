@@ -64,4 +64,17 @@ jobs:
         with:
           to: ${{ secrets.TELEGRAM_TO }}
           token: ${{ secrets.TELEGRAM_TOKEN }}
-          
+          message: |
+            ✅ Rebuild Completo Bootc concluído!
+            A imagem foi gerada do zero com pacotes atualizados.
+            Build: ${{ github.sha }}
+
+      - name: Notificar Falha no Telegram
+        if: failure()
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_TO }}
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          message: |
+            ❌ Erro no Rebuild Agendado!
+            Verifique o que falhou: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
