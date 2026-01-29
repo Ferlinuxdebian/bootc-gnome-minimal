@@ -1,12 +1,16 @@
 name: Build e Push da Imagem Bootc
 
 on:
+  schedule:
+    # 08:00 UTC representa 05:00 da manhã no horário de Brasília (UTC-3)
+    # Definido para as 08:05 para evitar congestionamento no GitHub
+    - cron: '5 8 * * *'
   push:
     branches:
       - main
     paths-ignore:
       - 'README.md'
-  workflow_dispatch: # Permite rodar manualmente pelo botão "Run workflow"
+  workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io
@@ -33,7 +37,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extrair metadados (tags, labels)
+      - name: Extrair metadados
         id: meta
         uses: docker/metadata-action@v5
         with:
@@ -51,6 +55,27 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          # Gerenciamento de cache para builds mais rápidos
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Notificar Sucesso no Telegram
+        if: success()
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_TO }}
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          message: |
+            ✅ Imagem Bootc atualizada com sucesso!
+            Horário: 05:00 BRT
+            Build: ${{ github.sha }}
+
+      - name: Notificar Falha no Telegram
+        if: failure()
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_TO }}
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          message: |
+            ❌ Erro no Build das 05:00!
+            Verifique os logs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            
