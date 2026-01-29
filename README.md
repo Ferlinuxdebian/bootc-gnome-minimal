@@ -18,14 +18,14 @@ Este repositório contém a "receita" para o build automatizado da minha imagem 
 | `post-install.sh` | Scripts de configuração pós-instalação (remover fedora flatpak, add flathub e instala os flatpaks). |
 | `.github/workflows` | Contém o arquivo .yml do GitHub Actions para o build automático. |
 | `10-nvidia-args-.toml` | Configura os parâmetros para colocar nouveau no blacklist. |
-| `post-install.service` | Configura um serviço do systemd para baixar os flatpaks no primeiro boot apos instalação |
+| `post-install.service` | Configura um serviço do systemd para baixar os flatpaks no primeiro boot após instalação |
 | `vconsole.conf` | Configura o TTY para pt-BR
 | `locale.conf` | Configura a localidade do sistema para pt-BR. | 
 | `config.toml` | Configura um arquivo Fedora kickstart para criar um ISO com anaconda para instalar a versão da imagem personalizada. |
 
 ## ⚙️ Como Atualizar o Sistema
 
-A imagem é reconstruída diariamente às **04h00** (horário de Brasília). Como costumo acordar entre **07h00 e 08h00**, já encontro uma atualização pronta para aplicar logo pela manhã.
+A imagem é reconstruída diariamente às **03h45** (horário de Brasília). Como costumo acordar entre **07h00 e 08h00**, já encontro uma atualização pronta para aplicar logo pela manhã.
 
 Além disso, configurei no GitHub Actions a integração com o bot do Telegram **@Botfather**, que me notifica automaticamente pelo Telegram sempre que o build da imagem é concluído com sucesso ou apresenta alguma falha.
 
