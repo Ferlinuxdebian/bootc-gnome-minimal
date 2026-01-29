@@ -3,7 +3,7 @@ name: Build e Push da Imagem Bootc
 on:
   schedule:
     # 08:00 UTC = 05:00 BRT (Horário de Brasília)
-    - cron: "0 18 * * *"
+    - cron: "20 19 * * *"
   push:
     branches:
       - main
