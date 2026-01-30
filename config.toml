@@ -10,9 +10,6 @@ enable = [
 contents = """
 clearpart --all --initlabel
 zerombr
-lang pt_BR.UTF-8
-keyboard --xlayout=br-abnt2
-timezone America/Sao_Paulo --isUtc
 
 # EFI
 part /boot/efi --fstype=efi --size=600 --fsoptions="umask=0077,shortname=winnt"
