@@ -5,7 +5,8 @@ xdg-utils
 evince-thumbnailer
 ffmpegthumbnailer
 btrfs-assistant
-compsize adw-gtk3-theme
+compsize
+adw-gtk3-theme
 featherpad
 usbutils
 distrobox
