@@ -6,7 +6,7 @@ Este repositório contém a "receita" para o build automatizado da minha imagem 
 
 * **Base:** Fedora Linux Versão (43)
 * **Interface:** GNOME Shell
-* **Drivers:** Nvidia (via Negativo17) com compilação automática por `akmods`.
+* **Drivers:** Nvidia (via Negativo17) incluso na `imagen`.
 * **Automação:** GitHub Actions com build diário às **03:45 (Brasília)**.
 
 ## 📁 Estrutura de Arquivos
