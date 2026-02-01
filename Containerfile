@@ -27,6 +27,9 @@ mv post-install.sh /usr/bin/post-install.sh
 echo "Move o serviço de pós instalação"
 mv post-install.service /etc/systemd/system/post-install.service
 
+echo "Atualiza todo o container para os pacotes mais recentes!"
+dnf5 -y upgrade --refresh
+
 echo "wget necessário para baixar repositórios"
 dnf5 -y install wget
 
