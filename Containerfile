@@ -31,7 +31,7 @@ echo "Atualiza todo o container para os pacotes mais recentes, mas não mexe no 
 dnf5 -y upgrade --refresh -x 'kernel*' -x 'grub2*' -x 'dracut*' -x 'shim*' -x 'fwupd*'
 
 echo "Instala o kernel-modules-extra para um melhor suporte a hardware"
-dnf5 -y install kernel-modules-extra-"$(uname -r)"
+dnf5 -y install kernel-modules-extra-"$(rpm -q kernel-devel --queryformat '%{VERSION}-%{RELEASE}.%{ARCH}')"
 
 echo "wget necessário para baixar repositórios"
 dnf5 -y install wget
