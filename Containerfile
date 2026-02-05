@@ -28,7 +28,10 @@ echo "Move o serviço de pós instalação"
 mv post-install.service /etc/systemd/system/post-install.service
 
 echo "Atualiza todo o container para os pacotes mais recentes, mas não mexe no kernel nem no bootloader"
-dnf -y upgrade --refresh -x 'kernel*' -x 'grub2*' -x 'dracut*' -x 'shim*' -x 'fwupd*'
+dnf5 -y upgrade --refresh -x 'kernel*' -x 'grub2*' -x 'dracut*' -x 'shim*' -x 'fwupd*'
+
+echo "Instala o kernel-modules-extra para um melhor suporte a hardware"
+dnf5 -y install kernel-modules-extra-"$(uname -r)"
 
 echo "wget necessário para baixar repositórios"
 dnf5 -y install wget
