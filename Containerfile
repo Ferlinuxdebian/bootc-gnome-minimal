@@ -69,3 +69,6 @@ systemctl enable zram-swap.service
 systemctl enable libvirtd.service
 systemctl enable spice-vdagentd.service
 EOF
+
+# Verificar por erros na imagem 
+RUN bootc container lint
