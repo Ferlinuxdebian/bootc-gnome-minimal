@@ -49,9 +49,6 @@ dnf5 install -y nvidia-driver nvidia-driver-cuda --refresh
 echo "Build nvidia kernel module para o kernel: $KERNEL_VERSION"
 akmods --force --kernels "$KERNEL_VERSION"
 
-echo "Rebuild do initramfs (dracut) com o módulo nvidia"
-dracut --force --kver "$KERNEL_VERSION"
-
 echo "Install gnome shell minimal"
 dnf5 install gnome-shell --setopt=install_weak_deps=False -y
 
@@ -68,6 +65,12 @@ systemctl mask akmods-keygen@akmods-keygen.service
 systemctl enable zram-swap.service
 systemctl enable libvirtd.service
 systemctl enable spice-vdagentd.service
+
+echo "Limpeza de resíduos de contrução" 
+dnf5 clean all
+rm -rf /var/log/dnf5.log* /var/log/akmods/*
+rm -rf /var/cache/*
+rm -rf /var/lib/dnf/repos/*
 EOF
 
 # Verificar por erros na imagem 
