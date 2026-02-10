@@ -42,8 +42,12 @@ echo "Configura repositório negativo17 para libs da nvidia necessárias"
 wget -O /etc/yum.repos.d/fedora-nvidia-580.repo \
 https://negativo17.org/repos/fedora-nvidia-580.repo
 
-echo "instalar o pacote do driver já previamente construído no estágio de build"
-rpm -vi --nodeps kmod-nvidia-*.rpm
+echo "instalar o pacote do nvidia-kmod-common necessário para o kmod-nvidia"
+dnf5 download nvidia-kmod-common
+rpm -vi --nodeps nvidia-kmod-common
+
+echo "instalar o kmod-nvidia previamente construído na imagem anterior"
+dnf5 -y install ./kmod-nvidia-*.rpm
 
 echo "Para /opt gravavel"
 rm -rf /opt && mkdir -p /var/opt && ln -s /var/opt /opt
