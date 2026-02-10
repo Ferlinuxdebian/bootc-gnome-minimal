@@ -6,6 +6,7 @@ RUN <<ELL
 echo "Identifica a versão do kernel instalada no container, para instalar kernel-devel para Nvidia"
 KERNEL_VERSION="$(rpm -q kernel-core --queryformat '%{VERSION}-%{RELEASE}.%{ARCH}')"
 
+echo "Instala o kernel-devel necessário para nvidia módulo"
 dnf5 -y install kernel-devel-"$KERNEL_VERSION"
 
 echo "wget necessário para baixar repositórios"
@@ -15,7 +16,7 @@ echo "Configura repositório negativo17 para drivers nvidia"
 wget -O /etc/yum.repos.d/fedora-nvidia-580.repo \
 https://negativo17.org/repos/fedora-nvidia-580.repo
 
-echo "Install nvidia driver and akmoda"
+echo "Instala o driver da nvidia"
 dnf5 install -y nvidia-driver nvidia-driver-cuda --refresh
 
 echo "Build nvidia kernel module para o kernel: $KERNEL_VERSION"
@@ -42,7 +43,7 @@ echo "Configura repositório negativo17 para libs da nvidia necessárias"
 wget -O /etc/yum.repos.d/fedora-nvidia-580.repo \
 https://negativo17.org/repos/fedora-nvidia-580.repo
 
-echo "instalar o pacote do nvidia-kmod-common necessário para o kmod-nvidia"
+echo "instalar o pacote do nvidia-kmod-common e nvidia-driver-cuda necessários, mas sem toda as dependências para construção do módulo"
 dnf5 download nvidia-kmod-common nvidia-driver-cuda
 rpm -vi --nodeps nvidia-kmod-common*.rpm
 rpm -vi --nodeps nvidia-driver-cuda*.rpm
