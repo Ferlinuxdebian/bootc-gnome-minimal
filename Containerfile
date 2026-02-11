@@ -98,6 +98,7 @@ systemctl enable libvirtd.service
 systemctl enable spice-vdagentd.service
 
 echo "Limpeza de resíduos de construção" 
+rm -rf kmod* nvidia* pacotes_rpm 
 dnf5 clean all
 EOF
 
