@@ -1,82 +1,98 @@
-# 🚀 Meu Fedora Bootc Customizado
+# 🚀 My Custom Fedora Bootc Image
 
-Este repositório contém a "receita" para o build automatizado da minha imagem de sistema operacional baseada em **Fedora 43**. O sistema é imutável, focado em performance com drivers **Nvidia** e interface **GNOME**.
+This repository contains the "recipe" for the automated build of my operating system image based on **Fedora 43**. The system is immutable, focused on performance with **Nvidia** drivers and the **GNOME** interface.
 
-## 🛠️ Arquitetura do Projeto
+## 🛠️ Project Architecture
 
-* **Base:** Fedora Linux Versão (43)
+* **Base:** Fedora Linux (version 43)
 * **Interface:** GNOME Shell
-* **Drivers:** Nvidia (via Negativo17) incluso na `imagem`.
-* **Automação:** GitHub Actions com build diário às **03:45 (Brasília)**.
+* **Drivers:** Nvidia (via Negativo17), included in the image
+* **Automation:** GitHub Actions with a daily build at **03:45 (Brasília time)**
 
-## 📁 Estrutura de Arquivos
+## 📁 File Structure
 
-| Arquivo | Função |
-| --- | --- |
-| `Containerfile` | Instruções de build da imagem (instalação de pacotes e drivers). |
-| `pacotes_rpm` | Lista de aplicativos e bibliotecas que o DNF deve instalar. |
-| `post-install.sh` | Scripts de configuração pós-instalação (remover fedora flatpak, add flathub e instala os flatpaks). |
-| `.github/workflows` | Contém o arquivo .yml do GitHub Actions para o build automático. |
-| `10-nvidia-args-.toml` | Configura os parâmetros para colocar nouveau no blacklist. |
-| `post-install.service` | Configura um serviço do systemd para baixar os flatpaks no primeiro boot após instalação |
-| `vconsole.conf` | Configura o TTY para pt-BR
-| `locale.conf` | Configura a localidade do sistema para pt-BR. | 
-| `config.toml` | Configura um arquivo Fedora kickstart para criar um ISO com anaconda para instalar a versão da imagem personalizada. |
+| File                   | Function                                                                                           |
+| ---------------------- | -------------------------------------------------------------------------------------------------- |
+| `Containerfile`        | Build instructions for the image (package and driver installation).                                |
+| `pacotes_rpm`          | List of applications and libraries for DNF to install.                                             |
+| `post-install.sh`      | Post-install configuration script (removes Fedora Flatpaks, adds Flathub, and installs Flatpaks).  |
+| `.github/workflows`    | Contains the GitHub Actions .yml file for automatic builds.                                        |
+| `10-nvidia-args.toml`  | Configures parameters to blacklist nouveau.                                                        |
+| `post-install.service` | Systemd service to download Flatpaks on first boot after installation.                             |
+| `vconsole.conf`        | Configures TTY for pt-BR.                                                                          |
+| `locale.conf`          | Sets the system locale to pt-BR.                                                                   |
+| `config.toml`          | Defines the Fedora Kickstart file for generating an ISO with Anaconda to install the custom image. |
 
-## ⚙️ Como Atualizar o Sistema
+## ⚙️ How to Update the System
 
-A imagem é reconstruída diariamente às **03h45** (horário de Brasília). Como costumo acordar entre **07h00 e 08h00**, já encontro uma atualização pronta para aplicar logo pela manhã.
+The image is rebuilt daily at **03:45 (Brasília time)**. Since I usually wake up between **07:00 and 08:00**, I already have a fresh update ready to apply in the morning.
 
-Além disso, configurei no GitHub Actions a integração com o bot do Telegram **@Botfather**, que me notifica automaticamente pelo Telegram sempre que o build da imagem é concluído com sucesso ou apresenta alguma falha.
+I also configured GitHub Actions to integrate with the Telegram bot **@Botfather**, which automatically notifies me on Telegram whenever the image build completes successfully or fails.
 
-![Imagem](https://i.imgur.com/5Ip7A1N.png)
+![Image](https://i.imgur.com/5Ip7A1N.png)
 
-#### Atualização manual 
-1. Abra o terminal.
-2. Verifique se há atualizações:
-``` 
+### Manual Update
+
+1. Open the terminal.
+2. Check for updates:
+
+```
 sudo bootc upgrade --check
 ```
-3. Realize o upgrade 
+
+3. Perform the upgrade:
+
 ```
-sudo bootc upgrade 
+sudo bootc upgrade
 ```
-4. Verifique os pacotes que foram atualizados, após reiniciar com a nova imagem
+
+4. After rebooting into the new image, check which packages were updated:
+
 ```
 rpm-ostree db diff
 ```
-5. Se houver mudanças, reinicie o computador:
+
+5. If changes are present, reboot the machine:
+
 ```
 sudo reboot
 ```
-## 🛠️ Comandos de Manutenção
 
-Se você precisar trocar de imagem ou verificar o estado atual:
+## 🛠️ Maintenance Commands
 
-* **Verificar versão atual:**
+If you need to switch images or check the current state:
+
+* **Check current version:**
+
 ```
 bootc status
 ```
 
-* **Voltar para a versão anterior (Rollback):**
+* **Rollback to previous version:**
+
 ```
 sudo bootc rollback
 ```
 
-* **Mudar para esta imagem (Primeira vez):**
+* **Switch to this image (first time):**
+
 ```
 sudo bootc switch container-registry:tag
 ```
 
-## 🤖 Criar uma ISO personalizada para instalar a imagem bootc
-#### Para criar a imagem personalizada
+## 🤖 Create a Custom ISO to Install the Bootc Image
+
+### Build the custom image:
+
 ```
 git clone https://github.com/Ferlinuxdebian/bootc-gnome-minimal.git
 cd bootc-gnome-minimal
 mkdir output
 sudo podman build -t bootc-gnome-minimal -f Containerfile
 ```
-#### Para criar a ISO de instalação 
+
+### Create the installation ISO:
+
 ```
 sudo podman run \
     --rm \
@@ -91,5 +107,8 @@ sudo podman run \
     --type anaconda-iso \
     --rootfs btrfs \
     localhost/bootc-gnome-minimal
-``` 
-Após o processo de construção, basta acessar o diretório output e depois bootiso, dentro desse diretório você vai notar uma imagem ISO "install.iso", que você pode usar para instalar o sistema.
+```
+
+After the build process, open the `output/bootiso` directory. Inside, you will find an ISO file named **install.iso**, which you can use to install the system.
+
+---
