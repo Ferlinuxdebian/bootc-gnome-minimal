@@ -93,5 +93,3 @@ sudo podman run \
     localhost/bootc-gnome-minimal
 ``` 
 Após o processo de construção, basta acessar o diretório output e depois bootiso, dentro desse diretório você vai notar uma imagem ISO "install.iso", que você pode usar para instalar o sistema.
-
-traduza para ingles
