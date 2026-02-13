@@ -3,6 +3,8 @@
 FROM quay.io/fedora/fedora-bootc:43 AS builder
 
 RUN <<ELL
+set -e
+
 echo "Identifica a versão do kernel instalada no container, para instalar kernel-devel para Nvidia"
 KERNEL_VERSION="$(rpm -q kernel-core --queryformat '%{VERSION}-%{RELEASE}.%{ARCH}')"
 
@@ -34,6 +36,8 @@ COPY 10-nvidia-args.toml locale.conf post-install.sh pacotes_rpm post-install.se
 
 # Bloco com a maior parte da configuração do sistema
 RUN <<EOF
+set -e
+
 echo "Cria diretórios necessários"
 mkdir -vp /var/roothome /data /var/home
 
@@ -101,6 +105,8 @@ dnf5 clean all
 # Bloco para instalar os pacotes rpm listados no arquivo pacotes_rpm
 # E também desativa alguns serviços desnecessários e habilita outros, além de fazer uma limpeza final
 RUN <<EOR
+set -e
+
 echo "instala os pacotes rpm listados no arquivo pacotes_rpm"
 tr '\n' ' ' < pacotes_rpm | xargs dnf5 install -y
 
