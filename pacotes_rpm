@@ -42,6 +42,8 @@ auditctl
 ibus-gtk4
 unzip
 btop
+ocl-icd
+opencl-filesystem
 libnvidia-cfg
 libnvidia-gpucomp
 libnvidia-ml
