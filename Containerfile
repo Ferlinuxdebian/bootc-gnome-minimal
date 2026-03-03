@@ -41,12 +41,15 @@ set -e
 echo "Cria diretórios necessários"
 mkdir -vp /var/roothome /data /var/home
 
-echo "Cria regras tmpfiles.d para NFS e rpcbind (diretórios criados no boot)"
-cat > /usr/lib/tmpfiles.d/nfs-state.conf <<'TMPFILES'
-d /var/lib/nfs/statd        0755 rpcuser rpcuser -
-d /var/lib/nfs/statd/sm     0755 rpcuser rpcuser -
-d /var/lib/nfs/statd/sm.bak 0755 rpcuser rpcuser -
-TMPFILES
+echo "Remove modulo do nfs desnecessário no initramfs"
+sudo tee /etc/dracut.conf.d/no-nfs.conf >/dev/null << 'EOF'
+omit_dracutmodules+=" nfs "
+omit_drivers+=" nfs nfsv3 nfsv4 nfs_acl nfs_common sunrpc rxrpc rpcrdma auth_rpcgss rpcsec_gss_krb5 "
+EOF
+
+echo "Gera um novo initramfs no local correto"
+kver="$(rpm -q kernel-core --queryformat '%{VERSION}-%{RELEASE}.%{ARCH}')"
+dracut -f /usr/lib/modules/${kver}/initramfs.img ${kver}
 
 echo "wget necessário para baixar repositórios"
 dnf5 -y install wget
