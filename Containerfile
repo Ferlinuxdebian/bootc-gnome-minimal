@@ -46,7 +46,6 @@ cat > /usr/lib/tmpfiles.d/nfs-state.conf <<'TMPFILES'
 d /var/lib/nfs/statd        0755 rpcuser rpcuser -
 d /var/lib/nfs/statd/sm     0755 rpcuser rpcuser -
 d /var/lib/nfs/statd/sm.bak 0755 rpcuser rpcuser -
-d /run/rpcbind              0755 rpc     rpc -
 TMPFILES
 
 echo "wget necessário para baixar repositórios"
