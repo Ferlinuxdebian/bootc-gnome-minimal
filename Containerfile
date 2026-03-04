@@ -105,12 +105,20 @@ dnf5 -y install kernel-modules-extra-"$KERNEL_VERSION"
 echo "Limpeza de residuos desse bloco de construção, para reduzir o tamanho da imagem final"
 rm -rvf kmod-nvidia-*.rpm nvidia-kmod-common*.rpm nvidia-driver-cuda*.rpm
 dnf5 clean all
+rm -rfv /var/cache/* \
+        /var/lib/* \
+        /var/log/* \
+        /var/tmp/* 
 EOF
 
 # Bloco para instalar o gnome shell minimal, e fazer uma última limpeza
 RUN echo "Install gnome shell minimal" && \
 dnf5 install gnome-shell --setopt=install_weak_deps=False -y && \
-dnf5 clean all
+dnf5 clean all && \
+rm -rfv /var/cache/* \
+        /var/lib/* \
+        /var/log/* \
+        /var/tmp/* 
 
 # Bloco para instalar os pacotes rpm listados no arquivo pacotes_rpm
 # E também desativa alguns serviços desnecessários e habilita outros, além de fazer uma limpeza final
@@ -130,6 +138,13 @@ systemctl enable spice-vdagentd.service
 echo "Limpeza de resíduos de construção" 
 rm -rvf pacotes_rpm 
 dnf5 clean all
+rm -rfv /var/cache/* \
+        /var/lib/* \
+        /var/log/* \
+        /var/tmp/* \
+        /var/usrlocal/share/applications/mimeinfo.cache \
+        /var/roothome/.*
+        
 EOR
 
 # Verificar por erros na imagem 
