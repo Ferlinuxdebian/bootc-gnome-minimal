@@ -42,7 +42,7 @@ echo "Cria diretórios necessários"
 mkdir -vp /var/roothome /data /var/home
 
 echo "Remove modulo do nfs desnecessário no initramfs"
-sudo tee /etc/dracut.conf.d/no-nfs.conf >/dev/null << 'NONFS'
+tee /etc/dracut.conf.d/no-nfs.conf >/dev/null << 'NONFS'
 omit_dracutmodules+=" nfs "
 omit_drivers+=" nfs nfsv3 nfsv4 nfs_acl nfs_common sunrpc rxrpc rpcrdma auth_rpcgss rpcsec_gss_krb5 "
 NONFS
