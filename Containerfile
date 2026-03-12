@@ -44,6 +44,12 @@ set -e
 echo "Cria diretórios necessários"
 mkdir -vp /var/roothome /data /var/home
 
+echo "Atualiza todo o container para os pacotes mais recentes"
+dnf5 -y upgrade --refresh 
+
+echo "Instala o kernel-modules-extra para um melhor suporte a hardware"
+dnf5 -y install kernel-modules-extra --refresh
+
 echo "Remove modulo do nfs desnecessário no initramfs"
 tee /etc/dracut.conf.d/no-nfs.conf >/dev/null << 'NONFS'
 omit_dracutmodules+=" nfs "
@@ -94,12 +100,6 @@ mv -v post-install.service /usr/lib/systemd/system/post-install.service
 echo "Instala os flatpaks no primeiro boot"
 chmod +x /usr/bin/post-install.sh
 systemctl enable post-install.service
-
-echo "Atualiza todo o container para os pacotes mais recentes"
-dnf5 -y upgrade --refresh 
-
-echo "Instala o kernel-modules-extra para um melhor suporte a hardware"
-dnf5 -y install kernel-modules-extra --refresh
 
 echo "Limpeza de residuos desse bloco de construção, para reduzir o tamanho da imagem final"
 rm -rvf kmod-nvidia-*.rpm nvidia-kmod-common*.rpm nvidia-driver-cuda*.rpm
