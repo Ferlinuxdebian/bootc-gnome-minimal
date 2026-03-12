@@ -5,11 +5,14 @@ FROM quay.io/fedora/fedora-bootc:43 AS builder
 RUN <<ELL
 set -e
 
-echo "Identifica a versão do kernel instalada no container, para instalar kernel-devel para Nvidia"
-KERNEL_VERSION="$(rpm -q kernel-core --queryformat '%{VERSION}-%{RELEASE}.%{ARCH}')"
+echo "Atualiza o kernel da imagem" 
+dnf5 upgrade -y 'kernel*' --refresh 
 
 echo "Instala o kernel-devel necessário para nvidia módulo"
-dnf5 -y install kernel-devel-"$KERNEL_VERSION"
+dnf5 -y install kernel-devel --refresh
+
+echo "Identifica a versão do kernel instalada no container, para instalar kernel-devel para Nvidia"
+KERNEL_VERSION="$(rpm -q kernel-core --queryformat '%{VERSION}-%{RELEASE}.%{ARCH}')"
 
 echo "wget necessário para baixar repositórios"
 dnf5 -y install wget
@@ -92,15 +95,11 @@ echo "Instala os flatpaks no primeiro boot"
 chmod +x /usr/bin/post-install.sh
 systemctl enable post-install.service
 
-echo "Atualiza todo o container para os pacotes mais recentes, mas não mexe no kernel nem no bootloader"
-echo "Veja a doc https://bit.ly/4aPjNvJ"
-dnf5 -y upgrade --refresh -x 'kernel*' -x 'grub2*' -x 'dracut*' -x 'shim*' -x 'fwupd*'
-
-echo "Identifica a versão do kernel instalada no container, para instalar kernel-modules-extra"
-KERNEL_VERSION="$(rpm -q kernel-core --queryformat '%{VERSION}-%{RELEASE}.%{ARCH}')"
+echo "Atualiza todo o container para os pacotes mais recentes"
+dnf5 -y upgrade --refresh 
 
 echo "Instala o kernel-modules-extra para um melhor suporte a hardware"
-dnf5 -y install kernel-modules-extra-"$KERNEL_VERSION" 
+dnf5 -y install kernel-modules-extra --refresh
 
 echo "Limpeza de residuos desse bloco de construção, para reduzir o tamanho da imagem final"
 rm -rvf kmod-nvidia-*.rpm nvidia-kmod-common*.rpm nvidia-driver-cuda*.rpm
