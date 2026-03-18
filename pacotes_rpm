@@ -4,6 +4,8 @@
 xdg-utils
 evince-thumbnailer
 ffmpegthumbnailer
+glycin-thumbnailer
+gnome-epub-thumbnailer
 btrfs-assistant
 compsize
 adw-gtk3-theme
@@ -19,7 +21,6 @@ nvtop
 xclip
 tree
 git
-glycin-thumbnailer
 langpacks-fonts-pt
 podman
 gnome-shell-extension-appindicator
