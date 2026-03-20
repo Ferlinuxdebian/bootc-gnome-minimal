@@ -1,3 +1,7 @@
+![bootc](https://img.shields.io/badge/bootc-Future-blue?style=for-the-badge&logo=linux&logoColor=white)
+![Fedora](https://img.shields.io/badge/Fedora-43-51A2DA?style=for-the-badge&logo=fedora&logoColor=white)
+![OSTree](https://img.shields.io/badge/OSTree-immutable-3c6eb4?style=for-the-badge&logo=git&logoColor=white)
+
 # 🚀 Meu Fedora Bootc Customizado
 
 Este repositório contém a "receita" para o build automatizado da minha imagem de sistema operacional baseada em **Fedora 43**. O sistema é imutável, focado em performance com drivers **Nvidia** e interface **GNOME**.
