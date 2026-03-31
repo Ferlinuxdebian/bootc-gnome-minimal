@@ -14,6 +14,8 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
+  # Força o uso do Node.js 24 para evitar avisos de depreciação
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   build-and-push:
@@ -29,7 +31,7 @@ jobs:
       - name: Extrair Versão da Imagem Base
         id: base_version
         run: |
-          # Busca a linha que contém FROM, extrai a imagem e a tag (após o :)
+          # Busca a linha que contém FROM, extrai a imagem e a tag
           VERSION=$(grep '^FROM' Containerfile | head -n 1 | awk -F: '{print $2}' | awk '{print $1}')
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
 
