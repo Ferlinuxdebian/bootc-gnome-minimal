@@ -1,6 +1,6 @@
 # Estágio de build do módulo da nvidia numa imagem separada
 # Para evitar poluir a imagem final com os pacotes de desenvolvimento do kernel e ferramentas de construção
-FROM quay.io/fedora/fedora-bootc:44 AS builder
+FROM quay.io/fedora/fedora-bootc:43 AS builder
 
 RUN <<ELL
 set -e
@@ -29,7 +29,7 @@ akmods --force --kernels "$KERNEL_VERSION"
 ELL
 
 # Imagem final do container
-FROM quay.io/fedora/fedora-bootc:44
+FROM quay.io/fedora/fedora-bootc:43
 
 # Copia o módulo da nvidia construído no estágio anterior
 COPY --from=builder /var/cache/akmods/nvidia/kmod-nvidia*.rpm ./
