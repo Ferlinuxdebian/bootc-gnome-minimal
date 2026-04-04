@@ -48,7 +48,7 @@ echo "Atualiza todo o container para os pacotes mais recentes"
 dnf5 -y upgrade --refresh 
 
 echo "Instala o kernel-modules-extra para um melhor suporte a hardware"
-dnf5 -y install kernel-modules-extra --refresh --enable-repo=updates-testing
+dnf5 -y install kernel-modules-extra --refresh
 
 echo "Remove modulo do nfs desnecessário no initramfs"
 tee /etc/dracut.conf.d/no-nfs.conf >/dev/null << 'NONFS'
