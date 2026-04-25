@@ -111,7 +111,7 @@ rm -rfv /var/cache/* \
 EOF
 
 # Bloco para instalar o gnome shell minimal, e fazer uma última limpeza
-RUN echo "Install Noctalia Shell && \
+RUN echo "Install Noctalia Shell" && \
 dnf5 install -y --nogpgcheck --repofrompath 'terra,https://repos.fyralabs.com/terra$releasever' terra-release && \
 dnf5 install -y niri sddm noctalia-shell && \
 dnf5 clean all && \
