@@ -83,7 +83,7 @@ mkdir -vp /var/usrlocal && mv -v /usr/local/* /var/usrlocal/ 2>/dev/null
 rm -rvf /usr/local && ln -vs /var/usrlocal /usr/local
 
 echo "Configura o zram"
-mv -v zram-generator.con /etc/systemd/
+mv -v zram-generator.conf /etc/systemd/
 
 echo "Configura o TTY para o layout de teclado BR, bem como o sistema de locale PT-BR"
 mv -v vconsole.conf /etc/vconsole.conf
