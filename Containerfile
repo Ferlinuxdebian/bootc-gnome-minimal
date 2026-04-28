@@ -35,7 +35,7 @@ FROM quay.io/fedora/fedora-bootc:44
 COPY --from=builder /var/cache/akmods/nvidia/kmod-nvidia*.rpm ./
 
 # Copia os arquivos necessários para o container
-COPY 10-nvidia-args.toml locale.conf post-install.sh pacotes_rpm post-install.service vconsole.conf ./
+COPY 10-nvidia-args.toml locale.conf post-install.sh pacotes_rpm post-install.service vconsole.conf zram-generator.conf ./
 
 # Bloco com a maior parte da configuração do sistema
 RUN <<EOF
@@ -62,6 +62,9 @@ dracut -f /usr/lib/modules/${kver}/initramfs.img ${kver}
 
 echo "wget necessário para baixar repositórios"
 dnf5 -y install wget
+
+echo "Configura o zram"
+mv -v zram-generator.conf /etc/systemd/
 
 echo "Configura repositório negativo17 para libs da nvidia necessárias"
 wget -O /etc/yum.repos.d/fedora-nvidia-580.repo \
