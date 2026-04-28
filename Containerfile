@@ -133,7 +133,6 @@ tr '\n' ' ' < pacotes_rpm | xargs dnf5 install -y
 echo "Desativa alguns serviços desnecessários e habilita outros"
 systemctl mask systemd-remount-fs.service
 systemctl mask akmods-keygen@akmods-keygen.service
-systemctl enable zram-swap.service
 systemctl enable libvirtd.service
 systemctl enable spice-vdagentd.service
 
