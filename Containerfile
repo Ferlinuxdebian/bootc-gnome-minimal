@@ -35,7 +35,7 @@ FROM quay.io/fedora/fedora-bootc:44
 COPY --from=builder /var/cache/akmods/nvidia/kmod-nvidia*.rpm ./
 
 # Copia os arquivos necessários para o container
-COPY 10-nvidia-args.toml locale.conf post-install.sh pacotes_rpm post-install.service vconsole.conf zram-generator.conf ./
+COPY 10-nvidia-args.toml locale.conf post-install.sh pacotes_desktop pacotes_necessarios post-install.service vconsole.conf zram-generator.conf ./
 
 # Bloco com a maior parte da configuração do sistema
 RUN <<EOF
@@ -127,8 +127,11 @@ rm -rfv /var/cache/* \
 RUN <<EOR
 set -e
 
-echo "instala os pacotes rpm listados no arquivo pacotes_rpm"
-tr '\n' ' ' < pacotes_rpm | xargs dnf5 install -y
+echo "instala os pacotes rpm necessários"
+tr '\n' ' ' < pacotes_necessarios | xargs dnf5 install -y
+
+echo "Instala pacotes especificos de Desktop Environment"
+tr '\n' ' ' < pacotes_desktop | xargs dnf5 install -y
 
 echo "Desativa alguns serviços desnecessários e habilita outros"
 systemctl mask systemd-remount-fs.service
