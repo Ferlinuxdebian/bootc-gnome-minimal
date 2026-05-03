@@ -2,6 +2,7 @@
 @networkmanager-submodules
 @multimedia
 xdg-utils
+brush
 featherpad
 ffmpegthumbnailer
 btrfs-assistant
