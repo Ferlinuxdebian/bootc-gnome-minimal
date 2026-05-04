@@ -14,6 +14,10 @@ tuned
 tuned-ppd
 zram-generator
 spice-vdagent
+podman
+fpaste
+auditctl
+unzip
 
 # Pacotes não essênciais
 @virtualization
@@ -23,7 +27,6 @@ btrfs-assistant
 micro
 nvtop
 xclip
-podman
 ps_mem
 copyq
 libva-nvidia-driver
@@ -31,11 +34,8 @@ ripgrep
 bash-color-prompt
 fira-code-fonts
 papirus-icon-theme
-fastfetch
-fpaste
-auditctl
-unzip
 btop
+fastfetch
 ptyxis
 
 # Drivers da Nvidia
