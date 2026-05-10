@@ -19,6 +19,7 @@ fpaste
 auditctl
 unzip
 usbutils
+sysfsutils
 
 # Pacotes não essênciais
 @virtualization
