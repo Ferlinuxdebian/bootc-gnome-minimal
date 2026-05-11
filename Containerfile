@@ -47,26 +47,6 @@ mkdir -vp /var/roothome /data /var/home
 echo "Atualiza todo o container para os pacotes mais recentes"
 dnf5 -y upgrade --refresh 
 
-# Bloco para instalar o gnome shell minimal, e fazer uma última limpeza
-RUN echo "Install gnome shell minimal" && \
-dnf5 install gnome-shell --setopt=install_weak_deps=False -y && \
-dnf5 clean all && \
-rm -rfv /var/cache/* \
-       /var/lib/* \
-       /var/log/* \
-       /var/tmp/* 
-
-# Bloco para instalar os pacotes rpm listados no arquivo pacotes_rpm
-# E também desativa alguns serviços desnecessários e habilita outros, além de fazer uma limpeza final
-RUN <<EOR
-set -e
-
-echo "instala os pacotes rpm necessários"
-grep -v '^#' pacotes_necessarios | tr '\n' ' ' | xargs dnf5 install -y
-
-echo "Instala pacotes especificos de Desktop Environment"
-grep -v '^#' pacotes_desktop | tr '\n' ' ' | xargs dnf5 install -y
-
 echo "Instala o kernel-modules-extra para um melhor suporte a hardware"
 dnf5 -y install kernel-modules-extra --refresh
 
@@ -133,6 +113,26 @@ rm -rfv /var/cache/* \
         /var/tmp/* 
 EOF
 
+# Bloco para instalar o gnome shell minimal, e fazer uma última limpeza
+RUN echo "Install gnome shell minimal" && \
+dnf5 install gnome-shell --setopt=install_weak_deps=False -y && \
+dnf5 clean all && \
+rm -rfv /var/cache/* \
+       /var/lib/* \
+       /var/log/* \
+       /var/tmp/* 
+
+# Bloco para instalar os pacotes rpm listados no arquivo pacotes_rpm
+# E também desativa alguns serviços desnecessários e habilita outros, além de fazer uma limpeza final
+RUN <<EOR
+set -e
+
+echo "instala os pacotes rpm necessários"
+grep -v '^#' pacotes_necessarios | tr '\n' ' ' | xargs dnf5 install -y
+
+echo "Instala pacotes especificos de Desktop Environment"
+grep -v '^#' pacotes_desktop | tr '\n' ' ' | xargs dnf5 install -y
+
 echo "Desativa alguns serviços desnecessários e habilita outros"
 systemctl mask systemd-remount-fs.service
 systemctl mask akmods-keygen@akmods-keygen.service
@@ -150,6 +150,5 @@ rm -rfv /var/cache/* \
         /var/roothome/.*
         
 EOR
-
 # Verificar por erros na imagem 
 RUN bootc container lint
