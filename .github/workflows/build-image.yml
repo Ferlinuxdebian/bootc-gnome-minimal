@@ -1,4 +1,3 @@
-```yaml
 name: Build e Push da Imagem Bootc
 
 on:
@@ -122,4 +121,3 @@ jobs:
 
             Logs:
             ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-```
