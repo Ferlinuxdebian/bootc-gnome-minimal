@@ -157,17 +157,14 @@ RUN bootc container lint
 
 # Stage do Chunkah
 FROM quay.io/coreos/chunkah:latest AS chunkah
+# Stage do Chunkah
+FROM quay.io/coreos/chunkah:latest AS chunkah
 
 ARG CHUNKAH_CONFIG_STR
 
 RUN --mount=from=final,src=/,target=/chunkah,ro \
-    --mount=type=bind,target=/run/src,rw \
     chunkah build \
       --prune /sysroot/ \
       --max-layers 128 \
       --label ostree.commit- \
-      --label ostree.final-diffid- \
-      > /run/src/out.ociarchive
-
-# Imagem final otimizada
-FROM oci-archive:out.ociarchive
+      --label ostree.final-diffid-
