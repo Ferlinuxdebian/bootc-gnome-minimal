@@ -1,8 +1,7 @@
-name: Build e Push da Imagem Bootc
+name: Build e Push da Imagem Bootc (Chunkah Splitter)
 
 on:
   schedule:
-    # Dispara as 03h45 diariamente (horário de Brasília)
     - cron: '45 6 * * *'
   push:
     branches:
@@ -14,7 +13,6 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
-  # Força o uso do Node.js 24 para evitar avisos de depreciação
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
@@ -31,46 +29,51 @@ jobs:
       - name: Extrair Versão da Imagem Base
         id: base_version
         run: |
-          # Busca a linha que contém FROM, extrai a imagem e a tag
           VERSION=$(grep '^FROM' Containerfile | head -n 1 | awk -F: '{print $2}' | awk '{print $1}')
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
 
-      - name: Configurar Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - name: Gerar Timestamp e Tags
+        id: vars
+        run: |
+          TIMESTAMP=$(TZ='America/Sao_Paulo' date +'%Y%m%d-%H%M')
+          VERSION=${{ steps.base_version.outputs.version }}
+          echo "tag_full=${VERSION}-${TIMESTAMP}" >> $GITHUB_OUTPUT
+          echo "tag_latest=${VERSION}-latest" >> $GITHUB_OUTPUT
 
       - name: Login no GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          podman login ${{ env.REGISTRY }} -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Gerar Timestamp (Horário de Brasília)
-        id: timestamp
-        run: echo "date=$(TZ='America/Sao_Paulo' date +'%Y%m%d-%H%M')" >> $GITHUB_OUTPUT
+      - name: Build da Imagem Customizada (Temporária)
+        run: |
+          # Build da imagem base antes do split
+          buildah build -t localhost/temp-image:latest -f ./Containerfile .
 
-      - name: Extrair metadados
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=raw,value=${{ steps.base_version.outputs.version }}-${{ steps.timestamp.outputs.date }}
-            type=raw,value=${{ steps.base_version.outputs.version }}-latest
-            type=ref,event=branch
-            type=sha,format=short
-            latest
+      - name: Otimização com Chunkah (Splitter)
+        run: |
+          # Define a imagem de origem para o splitter
+          IMG="localhost/temp-image:latest"
+          
+          # Executa o buildah usando o Containerfile.splitter remoto
+          # Isso divide a imagem em chunks otimizados
+          buildah build \
+            --skip-unused-stages=false \
+            --from $IMG \
+            --build-arg CHUNKAH_CONFIG_STR="$(podman inspect $IMG)" \
+            -t localhost/optimized-image:latest \
+            https://github.com/coreos/chunkah/releases/download/v0.5.0/Containerfile.splitter
 
-      - name: Build e Push da Imagem (Rebuild Completo)
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./Containerfile
-          push: true
-          pull: true
-          no-cache: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+      - name: Push das Imagens Otimizadas
+        run: |
+          DEST_BASE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
+          
+          # Tag e Push: Versão Datada
+          podman tag localhost/optimized-image:latest "${DEST_BASE}:${{ steps.vars.outputs.tag_full }}"
+          podman push "${DEST_BASE}:${{ steps.vars.outputs.tag_full }}"
+          
+          # Tag e Push: Versão Latest
+          podman tag localhost/optimized-image:latest "${DEST_BASE}:${{ steps.vars.outputs.tag_latest }}"
+          podman push "${DEST_BASE}:${{ steps.vars.outputs.tag_latest }}"
 
       - name: Notificar Sucesso no Telegram
         if: success()
@@ -79,10 +82,10 @@ jobs:
           to: ${{ secrets.TELEGRAM_TO }}
           token: ${{ secrets.TELEGRAM_TOKEN }}
           message: |
-            ✅ Rebuild Completo Bootc concluído!
+            ✅ Bootc Otimizado (Chunkah) concluído!
             Base: ${{ steps.base_version.outputs.version }}
-            Tag Gerada: ${{ steps.base_version.outputs.version }}-${{ steps.timestamp.outputs.date }}
-            Repositório: ${{ github.repository }}
+            Tag: ${{ steps.vars.outputs.tag_full }}
+            Status: Camadas processadas via Containerfile.splitter.
 
       - name: Notificar Falha no Telegram
         if: failure()
@@ -91,6 +94,5 @@ jobs:
           to: ${{ secrets.TELEGRAM_TO }}
           token: ${{ secrets.TELEGRAM_TOKEN }}
           message: |
-            ❌ Erro no Rebuild Agendado!
-            Base tentada: ${{ steps.base_version.outputs.version }}
-            Link: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            ❌ Erro no Rebuild (Chunkah Splitter)!
+            Workflow: ${{ github.run_id }}
