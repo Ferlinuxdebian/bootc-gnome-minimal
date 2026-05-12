@@ -1,4 +1,3 @@
-```yaml
 name: Build e Push da Imagem Bootc
 
 on:
@@ -116,4 +115,3 @@ jobs:
             ❌ Erro no Rebuild Agendado!
             Base tentada: ${{ steps.base_version.outputs.version }}
             Link: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-```
