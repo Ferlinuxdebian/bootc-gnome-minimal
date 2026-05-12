@@ -29,7 +29,7 @@ akmods --force --kernels "$KERNEL_VERSION"
 ELL
 
 # Imagem final do container
-FROM quay.io/fedora/fedora-bootc:44
+FROM quay.io/fedora/fedora-bootc:44 AS final
 
 # Copia o módulo da nvidia construído no estágio anterior
 COPY --from=builder /var/cache/akmods/nvidia/kmod-nvidia*.rpm ./
@@ -150,5 +150,16 @@ rm -rfv /var/cache/* \
         /var/roothome/.*
         
 EOR
+
 # Verificar por erros na imagem 
 RUN bootc container lint
+
+ARG CHUNKAH_CONFIG_STR
+
+FROM quay.io/coreos/chunkah AS chunkah
+ARG CHUNKAH_CONFIG_STR
+RUN --mount=from=final,src=/,target=/chunkah,ro \
+    --mount=type=bind,target=/run/src,rw \
+        chunkah build > /run/src/out.ociarchive
+
+FROM oci-archive:out.ociarchive
