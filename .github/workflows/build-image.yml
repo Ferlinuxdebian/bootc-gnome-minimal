@@ -2,13 +2,14 @@ name: Build e Push da Imagem Bootc
 
 on:
   schedule:
-    # Dispara as 03h45 diariamente (horário de Brasília)
     - cron: '45 6 * * *'
+
   push:
     branches:
       - main
     paths-ignore:
       - 'README.md'
+
   workflow_dispatch:
 
 env:
@@ -28,19 +29,23 @@ jobs:
       - name: Checkout do código
         uses: actions/checkout@v4
 
-      - name: Liberar Espaço em Disco
+      - name: Liberar MUITO espaço em disco
         run: |
-          echo "Espaço antes da limpeza:"
+          echo "Antes:"
           df -h
 
           sudo rm -rf /usr/share/dotnet
-          sudo rm -rf /opt/ghc
           sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
           sudo rm -rf /opt/hostedtoolcache
+          sudo rm -rf /usr/local/share/boost
+          sudo rm -rf /usr/lib/jvm
+          sudo rm -rf /usr/share/swift
 
+          sudo apt-get clean
           sudo docker system prune -af || true
 
-          echo "Espaço após limpeza:"
+          echo "Depois:"
           df -h
 
       - name: Extrair Versão da Imagem Base
@@ -52,9 +57,21 @@ jobs:
       - name: Instalar Buildah
         run: |
           sudo apt-get update
-          sudo apt-get install -y buildah
+          sudo apt-get install -y buildah fuse-overlayfs
 
-      - name: Login no GitHub Container Registry
+      - name: Configurar storage overlay
+        run: |
+          sudo mkdir -p /etc/containers
+
+          cat <<EOF | sudo tee /etc/containers/storage.conf
+          [storage]
+          driver = "overlay"
+
+          [storage.options]
+          mount_program = "/usr/bin/fuse-overlayfs"
+          EOF
+
+      - name: Login GHCR
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | \
           sudo buildah login \
@@ -62,7 +79,7 @@ jobs:
             --password-stdin \
             ${{ env.REGISTRY }}
 
-      - name: Gerar Timestamp (Horário de Brasília)
+      - name: Gerar Timestamp
         id: timestamp
         run: |
           echo "date=$(TZ='America/Sao_Paulo' date +'%Y%m%d-%H%M')" >> $GITHUB_OUTPUT
@@ -79,12 +96,12 @@ jobs:
             type=sha,format=short
             latest
 
-      - name: Build da Imagem com Buildah
+      - name: Build da imagem
         run: |
           LOCAL_IMAGE=localhost/bootc-image
 
           sudo buildah build \
-            --storage-driver=vfs \
+            --storage-driver=overlay \
             --format docker \
             --skip-unused-stages=false \
             --security-opt=label=disable \
@@ -95,26 +112,22 @@ jobs:
             -v "$(pwd):/run/src" \
             .
 
-      - name: Push da Imagem
+      - name: Push da imagem
         run: |
           LOCAL_IMAGE=localhost/bootc-image
 
           while read -r tag; do
             [ -z "$tag" ] && continue
 
-            echo "Tagging: $tag"
-
             sudo buildah tag "$LOCAL_IMAGE" "$tag"
 
-            echo "Pushing: $tag"
-
             sudo buildah push \
-              --storage-driver=vfs \
+              --storage-driver=overlay \
               "$tag"
 
           done <<< "${{ steps.meta.outputs.tags }}"
 
-      - name: Notificar Sucesso no Telegram
+      - name: Notificar sucesso
         if: success()
         uses: appleboy/telegram-action@master
         with:
@@ -123,16 +136,15 @@ jobs:
           message: |
             ✅ Rebuild Completo Bootc concluído!
             Base: ${{ steps.base_version.outputs.version }}
-            Tag Gerada: ${{ steps.base_version.outputs.version }}-${{ steps.timestamp.outputs.date }}
-            Repositório: ${{ github.repository }}
+            Tag: ${{ steps.base_version.outputs.version }}-${{ steps.timestamp.outputs.date }}
 
-      - name: Notificar Falha no Telegram
+      - name: Notificar falha
         if: failure()
         uses: appleboy/telegram-action@master
         with:
           to: ${{ secrets.TELEGRAM_TO }}
           token: ${{ secrets.TELEGRAM_TOKEN }}
           message: |
-            ❌ Erro no Rebuild Agendado!
-            Base tentada: ${{ steps.base_version.outputs.version }}
-            Link: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            ❌ Falha no build!
+            Link:
+            ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
