@@ -14,7 +14,6 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
-  # Força o uso do Node.js 24 para evitar avisos de depreciação
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
@@ -31,12 +30,8 @@ jobs:
       - name: Extrair Versão da Imagem Base
         id: base_version
         run: |
-          # Busca a linha que contém FROM, extrai a imagem e a tag
           VERSION=$(grep '^FROM' Containerfile | head -n 1 | awk -F: '{print $2}' | awk '{print $1}')
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
-
-      - name: Configurar Docker Buildx
-        uses: docker/setup-buildx-action@v3
 
       - name: Login no GitHub Container Registry
         uses: docker/login-action@v3
@@ -61,16 +56,30 @@ jobs:
             type=sha,format=short
             latest
 
-      - name: Build e Push da Imagem (Rebuild Completo)
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./Containerfile
-          push: true
-          pull: true
-          no-cache: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+      - name: Build da Imagem com Buildah (Compatível com Chunkah)
+        run: |
+          # O buildah usa os mesmos metadados de tags gerados anteriormente
+          # Pegamos a primeira tag da lista para o build inicial
+          FIRST_TAG=$(echo "${{ steps.meta.outputs.tags }}" | head -n 1)
+          
+          sudo buildah build \
+            --skip-unused-stages=false \
+            --security-opt=label=disable \
+            -t "$FIRST_TAG" \
+            -f Containerfile \
+            -v $(pwd):/run/src \
+            .
+
+      - name: Aplicar Tags Adicionais e Push
+        run: |
+          # Loop para taguear e enviar todas as variações geradas pelo metadata-action
+          FIRST_TAG=$(echo "${{ steps.meta.outputs.tags }}" | head -n 1)
+          for TAG in ${{ steps.meta.outputs.tags }}; do
+            if [ "$TAG" != "$FIRST_TAG" ]; then
+              sudo buildah tag "$FIRST_TAG" "$TAG"
+            fi
+            sudo buildah push "$TAG" docker://"$TAG"
+          done
 
       - name: Notificar Sucesso no Telegram
         if: success()
@@ -79,7 +88,7 @@ jobs:
           to: ${{ secrets.TELEGRAM_TO }}
           token: ${{ secrets.TELEGRAM_TOKEN }}
           message: |
-            ✅ Rebuild Completo Bootc concluído!
+            ✅ Rebuild Completo Bootc (Buildah) concluído!
             Base: ${{ steps.base_version.outputs.version }}
             Tag Gerada: ${{ steps.base_version.outputs.version }}-${{ steps.timestamp.outputs.date }}
             Repositório: ${{ github.repository }}
@@ -91,6 +100,6 @@ jobs:
           to: ${{ secrets.TELEGRAM_TO }}
           token: ${{ secrets.TELEGRAM_TOKEN }}
           message: |
-            ❌ Erro no Rebuild Agendado!
+            ❌ Erro no Rebuild Agendado (Buildah)!
             Base tentada: ${{ steps.base_version.outputs.version }}
             Link: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
