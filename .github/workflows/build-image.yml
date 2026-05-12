@@ -1,4 +1,97 @@
-# Estágio de build do módulo da NVIDIA
+name: Build e Push da Imagem Bootc
+on:
+  schedule:
+    - cron: '45 6 * * *'
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'README.md'
+  workflow_dispatch:
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ferlinuxdebian/bootc-gnome-minimal
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      - name: Extrair Versão da Imagem Base
+        id: base_version
+        run: |
+          VERSION=$(grep '^FROM' Containerfile | head -n 1 | awk -F: '{print $2}' | awk '{print $1}')
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Gerar Timestamp (Horário de Brasília)
+        id: timestamp
+        run: echo "date=$(TZ='America/Sao_Paulo' date +'%Y%m%d-%H%M')" >> $GITHUB_OUTPUT
+
+      - name: Login no GitHub Container Registry via Buildah
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | sudo buildah login \
+            -u ${{ github.actor }} \
+            --password-stdin \
+            ${{ env.REGISTRY }}
+
+      - name: Build da Imagem com Buildah
+        run: |
+          sudo buildah build \
+            --skip-unused-stages=false \
+            --security-opt=label=disable \
+            -t "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.base_version.outputs.version }}-${{ steps.timestamp.outputs.date }}" \
+            -f Containerfile \
+            -v $(pwd):/run/src \
+            .
+
+      - name: Aplicar Tags Adicionais
+        run: |
+          SOURCE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.base_version.outputs.version }}-${{ steps.timestamp.outputs.date }}"
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+
+          sudo buildah tag "${SOURCE}" "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.base_version.outputs.version }}-latest"
+          sudo buildah tag "${SOURCE}" "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
+          sudo buildah tag "${SOURCE}" "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:main"
+          sudo buildah tag "${SOURCE}" "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${SHORT_SHA}"
+
+      - name: Push de Todas as Tags
+        run: |
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          VERSION="${{ steps.base_version.outputs.version }}"
+          DATE="${{ steps.timestamp.outputs.date }}"
+
+          for TAG in "${VERSION}-${DATE}" "${VERSION}-latest" "latest" "main" "sha-${SHORT_SHA}"; do
+            echo "→ Pushing ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${TAG}"
+            sudo buildah push "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${TAG}"
+          done
+
+      - name: Notificar Sucesso no Telegram
+        if: success()
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_TO }}
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          message: |
+            ✅ Rebuild Completo Bootc concluído!
+            Base: ${{ steps.base_version.outputs.version }}
+            Tag Gerada: ${{ steps.base_version.outputs.version }}-${{ steps.timestamp.outputs.date }}
+            Repositório: ${{ env.IMAGE_NAME }}
+
+      - name: Notificar Falha no Telegram
+        if: failure()
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_TO }}
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          message: |
+            ❌ Erro no Rebuild Agendado!
+            Base tentada: ${{ steps.base_version.outputs.version }}
+            Link: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}# Estágio de build do módulo da NVIDIA
 # Separado para evitar poluir a imagem final com ferramentas de compilação
 FROM quay.io/fedora/fedora-bootc:44 AS builder
 
