@@ -74,9 +74,6 @@ RUN bootc container lint
 
 # Otimização da imagem final usando o chunkah aproveitando layers compartilhados
 ARG CHUNKAH_CONFIG_STR
-FROM quay.io/fedora/fedora-bootc:latest AS builder
-RUN dnf install -y tmux && dnf clean all
-RUN bootc container lint
 FROM quay.io/coreos/chunkah AS chunkah
 ARG CHUNKAH_CONFIG_STR
 RUN --mount=from=final,src=/,target=/chunkah,ro \
