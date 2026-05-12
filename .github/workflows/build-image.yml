@@ -1,52 +1,27 @@
 name: Build e Push da Imagem Bootc
-
 on:
   schedule:
+    # Dispara as 03h45 diariamente (horário de Brasília)
     - cron: '45 6 * * *'
-
   push:
     branches:
       - main
     paths-ignore:
       - 'README.md'
-
   workflow_dispatch:
-
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
-
     permissions:
       contents: read
       packages: write
-
     steps:
       - name: Checkout do código
         uses: actions/checkout@v4
-
-      - name: Liberar MUITO espaço em disco
-        run: |
-          echo "Antes:"
-          df -h
-
-          sudo rm -rf /usr/share/dotnet
-          sudo rm -rf /usr/local/lib/android
-          sudo rm -rf /opt/ghc
-          sudo rm -rf /opt/hostedtoolcache
-          sudo rm -rf /usr/local/share/boost
-          sudo rm -rf /usr/lib/jvm
-          sudo rm -rf /usr/share/swift
-
-          sudo apt-get clean
-          sudo docker system prune -af || true
-
-          echo "Depois:"
-          df -h
 
       - name: Extrair Versão da Imagem Base
         id: base_version
@@ -54,80 +29,64 @@ jobs:
           VERSION=$(grep '^FROM' Containerfile | head -n 1 | awk -F: '{print $2}' | awk '{print $1}')
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
 
-      - name: Instalar Buildah
+      - name: Gerar Timestamp (Horário de Brasília)
+        id: timestamp
+        run: echo "date=$(TZ='America/Sao_Paulo' date +'%Y%m%d-%H%M')" >> $GITHUB_OUTPUT
+
+      - name: Login no GitHub Container Registry via Buildah
         run: |
-          sudo apt-get update
-          sudo apt-get install -y buildah fuse-overlayfs
-
-      - name: Configurar storage overlay
-        run: |
-          sudo mkdir -p /etc/containers
-
-          cat <<EOF | sudo tee /etc/containers/storage.conf
-          [storage]
-          driver = "overlay"
-
-          [storage.options]
-          mount_program = "/usr/bin/fuse-overlayfs"
-          EOF
-
-      - name: Login GHCR
-        run: |
-          echo "${{ secrets.GITHUB_TOKEN }}" | \
-          sudo buildah login \
-            -u "${{ github.actor }}" \
+          echo "${{ secrets.GITHUB_TOKEN }}" | sudo buildah login \
+            -u ${{ github.actor }} \
             --password-stdin \
             ${{ env.REGISTRY }}
 
-      - name: Gerar Timestamp
-        id: timestamp
-        run: |
-          echo "date=$(TZ='America/Sao_Paulo' date +'%Y%m%d-%H%M')" >> $GITHUB_OUTPUT
-
-      - name: Extrair metadados
+      - name: Extrair metadados (labels)
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=raw,value=${{ steps.base_version.outputs.version }}-${{ steps.timestamp.outputs.date }}
-            type=raw,value=${{ steps.base_version.outputs.version }}-latest
-            type=ref,event=branch
-            type=sha,format=short
-            latest
 
-      - name: Build da imagem
+      - name: Build da Imagem com Buildah
         run: |
-          LOCAL_IMAGE=localhost/bootc-image
+          FULL_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
+          VERSION="${{ steps.base_version.outputs.version }}"
+          DATE="${{ steps.timestamp.outputs.date }}"
 
           sudo buildah build \
-            --storage-driver=overlay \
-            --format docker \
             --skip-unused-stages=false \
             --security-opt=label=disable \
-            --pull \
-            --no-cache \
-            -t "$LOCAL_IMAGE" \
+            -t "${FULL_IMAGE}:${VERSION}-${DATE}" \
             -f Containerfile \
-            -v "$(pwd):/run/src" \
+            -v $(pwd):/run/src \
             .
 
-      - name: Push da imagem
+      - name: Aplicar Tags Adicionais
         run: |
-          LOCAL_IMAGE=localhost/bootc-image
+          FULL_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
+          VERSION="${{ steps.base_version.outputs.version }}"
+          DATE="${{ steps.timestamp.outputs.date }}"
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
 
-          while read -r tag; do
-            [ -z "$tag" ] && continue
+          SOURCE="${FULL_IMAGE}:${VERSION}-${DATE}"
 
-            sudo buildah tag "$LOCAL_IMAGE" "$tag"
+          sudo buildah tag "${SOURCE}" "${FULL_IMAGE}:${VERSION}-latest"
+          sudo buildah tag "${SOURCE}" "${FULL_IMAGE}:latest"
+          sudo buildah tag "${SOURCE}" "${FULL_IMAGE}:main"
+          sudo buildah tag "${SOURCE}" "${FULL_IMAGE}:sha-${SHORT_SHA}"
 
-            sudo buildah push \
-              --storage-driver=overlay \
-              "$tag"
+      - name: Push de Todas as Tags para o Registry
+        run: |
+          FULL_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
+          VERSION="${{ steps.base_version.outputs.version }}"
+          DATE="${{ steps.timestamp.outputs.date }}"
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
 
-          done <<< "${{ steps.meta.outputs.tags }}"
+          for TAG in "${VERSION}-${DATE}" "${VERSION}-latest" "latest" "main" "sha-${SHORT_SHA}"; do
+            echo "→ Pushing ${FULL_IMAGE}:${TAG}"
+            sudo buildah push "${FULL_IMAGE}:${TAG}"
+          done
 
-      - name: Notificar sucesso
+      - name: Notificar Sucesso no Telegram
         if: success()
         uses: appleboy/telegram-action@master
         with:
@@ -136,15 +95,16 @@ jobs:
           message: |
             ✅ Rebuild Completo Bootc concluído!
             Base: ${{ steps.base_version.outputs.version }}
-            Tag: ${{ steps.base_version.outputs.version }}-${{ steps.timestamp.outputs.date }}
+            Tag Gerada: ${{ steps.base_version.outputs.version }}-${{ steps.timestamp.outputs.date }}
+            Repositório: ${{ github.repository }}
 
-      - name: Notificar falha
+      - name: Notificar Falha no Telegram
         if: failure()
         uses: appleboy/telegram-action@master
         with:
           to: ${{ secrets.TELEGRAM_TO }}
           token: ${{ secrets.TELEGRAM_TOKEN }}
           message: |
-            ❌ Falha no build!
-            Link:
-            ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            ❌ Erro no Rebuild Agendado!
+            Base tentada: ${{ steps.base_version.outputs.version }}
+            Link: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
