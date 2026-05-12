@@ -37,7 +37,19 @@ jobs:
       - name: Instalar Buildah
         run: |
           sudo apt-get update
-          sudo apt-get install -y buildah
+          sudo apt-get install -y buildah uidmap fuse-overlayfs slirp4netns
+
+      - name: Configurar Buildah Rootless
+        run: |
+          mkdir -p ~/.config/containers
+
+          cat > ~/.config/containers/storage.conf <<EOF
+          [storage]
+          driver = "overlay"
+
+          [storage.options]
+          mount_program = "/usr/bin/fuse-overlayfs"
+          EOF
 
       - name: Login no GitHub Container Registry
         run: |
@@ -66,28 +78,26 @@ jobs:
 
       - name: Build da Imagem com Buildah
         run: |
-          FIRST_TAG=$(echo "${{ steps.meta.outputs.tags }}" | head -n 1)
+          LOCAL_IMAGE=localhost/bootc-image
 
-          sudo buildah build \
+          buildah build \
             --skip-unused-stages=false \
             --security-opt=label=disable \
             --pull \
             --no-cache \
-            -t "$FIRST_TAG" \
+            -t "$LOCAL_IMAGE" \
             -f Containerfile \
             -v "$(pwd):/run/src" \
             .
 
       - name: Push da Imagem
         run: |
-          FIRST_TAG=$(echo "${{ steps.meta.outputs.tags }}" | head -n 1)
+          LOCAL_IMAGE=localhost/bootc-image
 
           while read -r tag; do
             [ -z "$tag" ] && continue
 
-            if [ "$tag" != "$FIRST_TAG" ]; then
-              buildah tag "$FIRST_TAG" "$tag"
-            fi
+            buildah tag "$LOCAL_IMAGE" "$tag"
 
             buildah push "$tag"
 
