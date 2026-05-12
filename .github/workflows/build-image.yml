@@ -64,6 +64,7 @@ jobs:
           TAG=$(echo "${{ steps.meta.outputs.tags }}" | head -n 1)
 
           sudo buildah build \
+            --format docker \
             --skip-unused-stages=false \
             --security-opt=label=disable \
             --pull \
