@@ -1,4 +1,4 @@
-# Essêncial 
+# Essêncial (é bom manter esses pacotes e não alterar)
 @networkmanager-submodules
 @multimedia
 ffmpegthumbnailer
@@ -21,7 +21,7 @@ unzip
 usbutils
 sysfsutils
 
-# Pacotes não essênciais
+# Pacotes não essênciais (pode ser alterado a gosto)
 @virtualization
 distrobox
 featherpad
@@ -39,7 +39,7 @@ btop
 fastfetch
 adw-gtk3-theme
 
-# Drivers da Nvidia
+# Drivers da Nvidia (se você não tem nvidia, pode remover a versão é sempre a 580 negativo17)
 nvidia-gpu-firmware
 nvidia-modprobe
 ocl-icd
