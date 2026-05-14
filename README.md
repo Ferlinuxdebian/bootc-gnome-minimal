@@ -67,10 +67,19 @@ sudo bootc switch container-registry:tag
 ### Build da imagem local
 
 ```bash
+# baixar os arquivos do projeto
 git clone https://github.com/Ferlinuxdebian/bootc-gnome-minimal.git
 cd bootc-gnome-minimal
 mkdir output
-sudo podman build -t bootc-gnome-minimal -f Containerfile
+
+# build do projeto com o buildah
+sudo buildah build \
+    --skip-unused-stages=false \
+    --security-opt=label=disable \
+    -t "bootc-gnome-minimal" \
+    -f Containerfile \
+    -v $(pwd):/run/src \
+    .
 ```
 
 ### Geração da ISO de instalação
