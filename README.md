@@ -2,7 +2,7 @@
 
 Este repositório contém a definição da imagem de sistema operacional baseada em **Fedora 44**, construída com `bootc`. O sistema é imutável, voltado para uso desktop com suporte a drivers Nvidia e interface GNOME.
 
-Além do `bootc`, a imagem utiliza o [chunkah](https://github.com/coreos/chunkah) para otimizar o processo de atualização, dividindo a imagem em camadas adicionais e reduzindo o volume de dados transferidos a cada novo build.
+Além do `bootc`, a imagem utiliza o [chunkah](https://github.com/coreos/chunkah) para otimizar o processo de atualização, dividindo a imagem em camadas adicionais e reduzindo o volume de dados transferidos a cada update do bootc.
 
 ## Arquitetura do Projeto
 
