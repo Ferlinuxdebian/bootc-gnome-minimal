@@ -1,87 +1,81 @@
-![bootc](https://img.shields.io/badge/bootc-Future-blue?style=for-the-badge&logo=linux&logoColor=white)
-![Fedora](https://img.shields.io/badge/Fedora-43-51A2DA?style=for-the-badge&logo=fedora&logoColor=white)
-![OSTree](https://img.shields.io/badge/OSTree-immutable-3c6eb4?style=for-the-badge&logo=git&logoColor=white)
+# Fedora Bootc Imagem Personalizada
 
-# 🚀 Meu Fedora Bootc Customizado
+Este repositório contém a definição da imagem de sistema operacional baseada em **Fedora 44**, construída com `bootc`. O sistema é imutável, voltado para uso desktop com suporte a drivers Nvidia e interface GNOME.
 
-Este repositório contém a "receita" para o build automatizado da minha imagem de sistema operacional baseada em **Fedora 43**. O sistema é imutável, focado em performance com drivers **Nvidia** e interface **GNOME**.
+Além do `bootc`, a imagem utiliza o [chunkah](https://github.com/coreos/chunkah) para otimizar o processo de atualização, dividindo a imagem em camadas adicionais e reduzindo o volume de dados transferidos a cada novo build.
 
-## 🛠️ Arquitetura do Projeto
+## Arquitetura do Projeto
 
-* **Base:** Fedora Linux Versão (43)
-* **Interface:** GNOME Shell
-* **Drivers:** Nvidia (via Negativo17) incluso na `imagem`.
-* **Automação:** GitHub Actions com build diário às **03:45 (Brasília)**.
+- **Base:** Fedora Linux 44
+- **Interface:** GNOME Shell
+- **Drivers:** Nvidia via repositório Negativo17, incluídos na imagem
+- **Automação:** GitHub Actions com build diário às 03h45 (horário de Brasília)
 
-## 📁 Estrutura de Arquivos
+## Estrutura de Arquivos
 
 | Arquivo | Função |
-| --- | --- |
-| `Containerfile` | Instruções de build da imagem (instalação de pacotes e drivers). |
-| `pacotes_rpm` | Lista de aplicativos e bibliotecas que o DNF deve instalar. |
-| `post-install.sh` | Scripts de configuração pós-instalação (remover fedora flatpak, add flathub e instala os flatpaks). |
-| `.github/workflows` | Contém o arquivo .yml do GitHub Actions para o build automático. |
-| `10-nvidia-args-.toml` | Configura os parâmetros para colocar nouveau no blacklist. |
-| `post-install.service` | Configura um serviço do systemd para baixar os flatpaks no primeiro boot após instalação |
-| `vconsole.conf` | Configura o TTY para pt-BR
-| `locale.conf` | Configura a localidade do sistema para pt-BR. | 
-| `config.toml` | Configura um arquivo Fedora kickstart para criar um ISO com anaconda para instalar a versão da imagem personalizada. |
+|---|---|
+| `Containerfile` | Instruções de build da imagem (instalação de pacotes e drivers) |
+| `pacotes_desktop` | Lista de pacotes relacionados à interface gráfica (GNOME, Plasma e afins) |
+| `pacotes_necessarios` | Lista de pacotes essenciais ao sistema, acrescida de pacotes de escolha pessoal |
+| `post-install.sh` | Script de pós-instalação: remove o repositório Fedora Flatpak, adiciona o Flathub e instala os Flatpaks |
+| `.github/workflows` | Arquivo `.yml` responsável pelo build automático via GitHub Actions |
+| `10-nvidia-args.toml` | Parâmetros para colocar o driver `nouveau` no blacklist |
+| `post-install.service` | Serviço systemd que executa o script de pós-instalação no primeiro boot |
+| `vconsole.conf` | Configuração do TTY para pt-BR |
+| `locale.conf` | Configuração de localidade do sistema para pt-BR |
+| `config.toml` | Arquivo de kickstart do Anaconda para geração de ISO de instalação |
+| `zram-generator.conf` | Configura o zram com tamanho igual ao da RAM, usando o algoritmo de compressão zstd |
 
-## ⚙️ Como Atualizar o Sistema
+## Ciclo de Atualização
 
-A imagem é reconstruída diariamente às **03h45** (horário de Brasília). Como costumo acordar entre **07h00 e 08h00**, já encontro uma atualização pronta para aplicar logo pela manhã.
+A imagem é reconstruída automaticamente todos os dias às 03h45. Uma notificação via Telegram (integração com o BotFather) é enviada ao final de cada build, indicando sucesso ou falha.
 
-Além disso, configurei no GitHub Actions a integração com o bot do Telegram **@Botfather**, que me notifica automaticamente pelo Telegram sempre que o build da imagem é concluído com sucesso ou apresenta alguma falha.
+![Notificação Telegram](https://i.imgur.com/5Ip7A1N.png)
 
-![Imagem](https://i.imgur.com/5Ip7A1N.png)
+### Atualização manual
 
-#### Atualização manual 
-1. Abra o terminal.
-2. Verifique se há atualizações:
-``` 
+```bash
+# Verificar se há nova imagem disponível
 sudo bootc upgrade --check
-```
-3. Realize o upgrade 
-```
-sudo bootc upgrade 
-```
-4. Verifique os pacotes que foram atualizados, após reiniciar com a nova imagem
-```
+
+# Aplicar a atualização
+sudo bootc upgrade
+
+# Após reiniciar, verificar o que mudou
 rpm-ostree db diff
-```
-5. Se houver mudanças, reinicie o computador:
-```
+
+# Reiniciar para ativar a nova imagem
 sudo reboot
 ```
-## 🛠️ Comandos de Manutenção
 
-Se você precisar trocar de imagem ou verificar o estado atual:
+## Comandos de Manutenção
 
-* **Verificar versão atual:**
-```
+```bash
+# Ver a versão atual da imagem
 bootc status
-```
 
-* **Voltar para a versão anterior (Rollback):**
-```
+# Reverter para a imagem anterior
 sudo bootc rollback
-```
 
-* **Mudar para esta imagem (Primeira vez):**
-```
+# Migrar para esta imagem (primeira utilização)
 sudo bootc switch container-registry:tag
 ```
 
-## 🤖 Criar uma ISO personalizada para instalar a imagem bootc
-#### Para criar a imagem personalizada
-```
+## Criação de ISO Personalizada
+
+### Build da imagem local
+
+```bash
 git clone https://github.com/Ferlinuxdebian/bootc-gnome-minimal.git
 cd bootc-gnome-minimal
 mkdir output
 sudo podman build -t bootc-gnome-minimal -f Containerfile
 ```
-#### Para criar a ISO de instalação 
-```
+
+### Geração da ISO de instalação
+
+```bash
 sudo podman run \
     --rm \
     -it \
@@ -95,5 +89,6 @@ sudo podman run \
     --type anaconda-iso \
     --rootfs btrfs \
     localhost/bootc-gnome-minimal
-``` 
-Após o processo de construção, basta acessar o diretório output e depois bootiso, dentro desse diretório você vai notar uma imagem ISO "install.iso", que você pode usar para instalar o sistema.
+```
+
+Após a conclusão, o arquivo `output/bootiso/install.iso` estará disponível para uso na instalação do sistema.
