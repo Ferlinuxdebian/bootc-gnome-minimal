@@ -59,7 +59,7 @@ bootc status
 sudo bootc rollback
 
 # Migrar para esta imagem (primeira utilização)
-sudo bootc switch container-registry:tag
+sudo bootc switch ghcr.io/ferlinuxdebian/bootc-gnome-minimal:latest
 ```
 
 ## Criação de ISO Personalizada
