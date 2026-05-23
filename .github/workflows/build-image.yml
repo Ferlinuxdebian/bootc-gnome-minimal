@@ -34,14 +34,14 @@ jobs:
 
       - name: Login no GitHub Container Registry via Buildah
         run: |
-          echo "${{ secrets.GITHUB_TOKEN }}" | sudo buildah login \
+          echo "${{ secrets.GITHUB_TOKEN }}" | buildah login \
             -u ${{ github.actor }} \
             --password-stdin \
             ${{ env.REGISTRY }}
 
       - name: Build da Imagem com Buildah
         run: |
-          sudo buildah build \
+          buildah build \
             --skip-unused-stages=false \
             --security-opt=label=disable \
             -t "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.base_version.outputs.version }}-${{ steps.timestamp.outputs.date }}" \
@@ -54,10 +54,10 @@ jobs:
           SOURCE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.base_version.outputs.version }}-${{ steps.timestamp.outputs.date }}"
           SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
 
-          sudo buildah tag "${SOURCE}" "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.base_version.outputs.version }}-latest"
-          sudo buildah tag "${SOURCE}" "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
-          sudo buildah tag "${SOURCE}" "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:main"
-          sudo buildah tag "${SOURCE}" "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${SHORT_SHA}"
+          buildah tag "${SOURCE}" "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.base_version.outputs.version }}-latest"
+          buildah tag "${SOURCE}" "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
+          buildah tag "${SOURCE}" "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:main"
+          buildah tag "${SOURCE}" "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${SHORT_SHA}"
 
       - name: Push de Todas as Tags
         run: |
@@ -67,7 +67,7 @@ jobs:
 
           for TAG in "${VERSION}-${DATE}" "${VERSION}-latest" "latest" "main" "sha-${SHORT_SHA}"; do
             echo "→ Pushing ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${TAG}"
-            sudo buildah push "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${TAG}"
+            buildah push "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${TAG}"
           done
 
       - name: Notificar Sucesso no Telegram
