@@ -1,5 +1,4 @@
 name: Build e Push da Imagem Bootc
-
 on:
   schedule:
     - cron: '45 6 * * *'
@@ -9,12 +8,10 @@ on:
     paths-ignore:
       - 'README.md'
   workflow_dispatch:
-
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ferlinuxdebian/bootc-gnome-minimal
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
@@ -39,7 +36,6 @@ jobs:
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | buildah login \
             -u ${{ github.actor }} \
-            -u ${{ github.actor }} \
             --password-stdin \
             ${{ env.REGISTRY }}
 
@@ -57,6 +53,7 @@ jobs:
         run: |
           SOURCE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.base_version.outputs.version }}-${{ steps.timestamp.outputs.date }}"
           SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+
           buildah tag "${SOURCE}" "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.base_version.outputs.version }}-latest"
           buildah tag "${SOURCE}" "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
           buildah tag "${SOURCE}" "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:main"
@@ -67,6 +64,7 @@ jobs:
           SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
           VERSION="${{ steps.base_version.outputs.version }}"
           DATE="${{ steps.timestamp.outputs.date }}"
+
           for TAG in "${VERSION}-${DATE}" "${VERSION}-latest" "latest" "main" "sha-${SHORT_SHA}"; do
             echo "→ Pushing ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${TAG}"
             buildah push "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${TAG}"
@@ -74,7 +72,7 @@ jobs:
 
       - name: Notificar Sucesso no Telegram
         if: success()
-        uses: appleboy/telegram-action@v1.0.1
+        uses: appleboy/telegram-action@master
         with:
           to: ${{ secrets.TELEGRAM_TO }}
           token: ${{ secrets.TELEGRAM_TOKEN }}
@@ -86,7 +84,7 @@ jobs:
 
       - name: Notificar Falha no Telegram
         if: failure()
-        uses: appleboy/telegram-action@v1.0.1
+        uses: appleboy/telegram-action@master
         with:
           to: ${{ secrets.TELEGRAM_TO }}
           token: ${{ secrets.TELEGRAM_TOKEN }}
