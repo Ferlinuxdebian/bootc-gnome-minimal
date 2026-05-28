@@ -39,6 +39,11 @@ btop
 fastfetch
 adw-gtk3-theme
 gum
+cockpit
+cockpit-podman
+cockpit-files
+cockpit-ostree
+cockpit-machines
 
 # Drivers da Nvidia (se você não tem nvidia, pode remover a versão é sempre a 580 negativo17)
 nvidia-gpu-firmware
