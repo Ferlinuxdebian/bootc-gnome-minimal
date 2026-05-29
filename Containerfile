@@ -62,7 +62,7 @@ RUN grep -v '^#' pacotes_necessarios | tr '\n' ' ' | xargs dnf5 install -y && \
     systemctl mask akmods-keygen@akmods-keygen.service && \
     systemctl enable libvirtd.service && \
     systemctl enable spice-vdagentd.service && \
-    systemctl enable cockpit && \
+    systemctl enable --now cockpit.socket && \
     rm -fv pacotes_necessarios pacotes_desktop && \
     dnf5 clean all && \
     rm -rfv /var/cache/* \
