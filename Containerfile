@@ -48,12 +48,12 @@ RUN mkdir -vp /var/roothome /data /var/home && \
     /var/tmp/*
 
 # Instalação do gnome-shell minimalista
-RUN dnf5 install gnome-shell --setopt=install_weak_deps=False -y && \
-dnf5 clean all && \
-rm -rfv /var/cache/* \
-/var/lib/* \
-/var/log/* \
-/var/tmp/*
+#RUN dnf5 install gnome-shell --setopt=install_weak_deps=False -y && \
+#dnf5 clean all && \
+#rm -rfv /var/cache/* \
+#/var/lib/* \
+#/var/log/* \
+#/var/tmp/*
 
 # instalação dos pacotes necessários para o ambiente de desktop e a base
 RUN grep -v '^#' pacotes_necessarios | tr '\n' ' ' | xargs dnf5 install -y && \
