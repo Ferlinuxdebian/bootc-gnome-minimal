@@ -8,96 +8,94 @@ on:
     paths-ignore:
       - 'README.md'
   workflow_dispatch:
+
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ferlinuxdebian/bootc-gnome-minimal
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
+
     steps:
       - name: Checkout do código
         uses: actions/checkout@v4
 
-      # PASSO PARA CORRIGIR O ERRO: Libera espaço em disco no runner do GitHub
       - name: Liberar espaço em disco
         run: |
-          sudo rm -rf /usr/share/dotnet
-          sudo rm -rf /usr/local/lib/android
-          sudo rm -rf /opt/ghc
-          sudo rm -rf "/usr/local/share/boost"
-          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+            "/usr/local/share/boost" "$AGENT_TOOLSDIRECTORY"
 
-      - name: Extrair Versão da Imagem Base
-        id: base_version
+      # Unifica os dois steps de metadados em um só
+      - name: Gerar metadados do build
+        id: meta
         run: |
           VERSION=$(grep '^FROM' Containerfile | head -n 1 | awk -F: '{print $2}' | awk '{print $1}')
-          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          DATE=$(TZ='America/Sao_Paulo' date +'%Y%m%d-%H%M')
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          PRIMARY="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${VERSION}-${DATE}"
 
-      - name: Gerar Timestamp (Horário de Brasília)
-        id: timestamp
-        run: echo "date=$(TZ='America/Sao_Paulo' date +'%Y%m%d-%H%M')" >> $GITHUB_OUTPUT
+          echo "version=${VERSION}"     >> $GITHUB_OUTPUT
+          echo "date=${DATE}"           >> $GITHUB_OUTPUT
+          echo "short_sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
+          echo "primary=${PRIMARY}"     >> $GITHUB_OUTPUT
 
-      - name: Login no GitHub Container Registry via Buildah
+      - name: Login no GHCR
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | buildah login \
-            -u ${{ github.actor }} \
-            --password-stdin \
-            ${{ env.REGISTRY }}
+            -u "${{ github.actor }}" --password-stdin "${{ env.REGISTRY }}"
 
-      - name: Build da Imagem com Buildah
+      # --layers habilita cache de layers intermediárias
+      # --cache-from reutiliza layers do build anterior (só baixa o que mudou)
+      # buildah pull garante que o cache-from exista localmente antes do build
+      - name: Build da imagem com cache de layers
         run: |
+          buildah pull "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest" 2>/dev/null || true
+
           buildah build \
-            --skip-unused-stages=false \
-            --security-opt=label=disable \
-            -t "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.base_version.outputs.version }}-${{ steps.timestamp.outputs.date }}" \
+            --layers \
+            --cache-from "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest" \
+            --security-opt label=disable \
+            -t "${{ steps.meta.outputs.primary }}" \
             -f Containerfile \
-            -v $(pwd):/run/src \
+            -v "$(pwd):/run/src" \
             .
 
-      - name: Aplicar Tags Adicionais
+      # Envia layers uma única vez
+      - name: Push da tag principal
+        run: buildah push "${{ steps.meta.outputs.primary }}"
+
+      # skopeo copy copia apenas o manifesto no registry, sem re-enviar nenhuma layer
+      # Muito mais rápido do que 4x buildah push
+      - name: Aplicar tags adicionais via skopeo
         run: |
-          SOURCE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.base_version.outputs.version }}-${{ steps.timestamp.outputs.date }}"
-          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          VERSION="${{ steps.meta.outputs.version }}"
+          SHORT_SHA="${{ steps.meta.outputs.short_sha }}"
+          BASE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
+          CREDS="${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}"
 
-          buildah tag "${SOURCE}" "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.base_version.outputs.version }}-latest"
-          buildah tag "${SOURCE}" "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
-          buildah tag "${SOURCE}" "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:main"
-          buildah tag "${SOURCE}" "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${SHORT_SHA}"
-
-      - name: Push de Todas as Tags
-        run: |
-          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
-          VERSION="${{ steps.base_version.outputs.version }}"
-          DATE="${{ steps.timestamp.outputs.date }}"
-
-          for TAG in "${VERSION}-${DATE}" "${VERSION}-latest" "latest" "main" "sha-${SHORT_SHA}"; do
-            echo "→ Pushing ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${TAG}"
-            buildah push "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${TAG}"
+          for TAG in "${VERSION}-latest" "latest" "main" "sha-${SHORT_SHA}"; do
+            echo "→ Copiando manifesto para :${TAG}"
+            skopeo copy \
+              --src-creds  "${CREDS}" \
+              --dest-creds "${CREDS}" \
+              "docker://${{ steps.meta.outputs.primary }}" \
+              "docker://${BASE}:${TAG}"
           done
 
-      - name: Notificar Sucesso no Telegram
-        if: success()
-        uses: appleboy/telegram-action@master
+      # Uma notificação única para sucesso e falha; @master é lento pois não tem versão fixada
+      - name: Notificar no Telegram
+        if: always()
+        uses: appleboy/telegram-action@v1.0.0
         with:
           to: ${{ secrets.TELEGRAM_TO }}
           token: ${{ secrets.TELEGRAM_TOKEN }}
           message: |
-            ✅ Rebuild Completo Bootc concluído!
-            Base: ${{ steps.base_version.outputs.version }}
-            Tag Gerada: ${{ steps.base_version.outputs.version }}-${{ steps.timestamp.outputs.date }}
-            Repositório: ${{ env.IMAGE_NAME }}
-
-      - name: Notificar Falha no Telegram
-        if: failure()
-        uses: appleboy/telegram-action@master
-        with:
-          to: ${{ secrets.TELEGRAM_TO }}
-          token: ${{ secrets.TELEGRAM_TOKEN }}
-          message: |
-            ❌ Erro no Rebuild Agendado!
-            Base tentada: ${{ steps.base_version.outputs.version }}
-            Link: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            ${{ job.status == 'success' && '✅ Rebuild Concluído!' || '❌ Erro no Rebuild!' }}
+            📦 Base: ${{ steps.meta.outputs.version }}
+            🏷️ Tag: ${{ steps.meta.outputs.version }}-${{ steps.meta.outputs.date }}
+            🔗 ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
