@@ -30,7 +30,6 @@ jobs:
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
             "/usr/local/share/boost" "$AGENT_TOOLSDIRECTORY"
 
-      # Unifica os dois steps de metadados em um só
       - name: Gerar metadados do build
         id: meta
         run: |
@@ -49,28 +48,18 @@ jobs:
           echo "${{ secrets.GITHUB_TOKEN }}" | buildah login \
             -u "${{ github.actor }}" --password-stdin "${{ env.REGISTRY }}"
 
-      # --layers habilita cache de layers intermediárias
-      # --cache-from reutiliza layers do build anterior (só baixa o que mudou)
-      # buildah pull garante que o cache-from exista localmente antes do build
-      - name: Build da imagem com cache de layers
+      - name: Build da imagem
         run: |
-          buildah pull "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest" 2>/dev/null || true
-
           buildah build \
-            --layers \
-            --cache-from "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest" \
             --security-opt label=disable \
             -t "${{ steps.meta.outputs.primary }}" \
             -f Containerfile \
             -v "$(pwd):/run/src" \
             .
 
-      # Envia layers uma única vez
       - name: Push da tag principal
         run: buildah push "${{ steps.meta.outputs.primary }}"
 
-      # skopeo copy copia apenas o manifesto no registry, sem re-enviar nenhuma layer
-      # Muito mais rápido do que 4x buildah push
       - name: Aplicar tags adicionais via skopeo
         run: |
           VERSION="${{ steps.meta.outputs.version }}"
@@ -87,10 +76,9 @@ jobs:
               "docker://${BASE}:${TAG}"
           done
 
-      # Uma notificação única para sucesso e falha; @master é lento pois não tem versão fixada
       - name: Notificar no Telegram
         if: always()
-        uses: appleboy/telegram-action@v1.0.0
+        uses: appleboy/telegram-action@master
         with:
           to: ${{ secrets.TELEGRAM_TO }}
           token: ${{ secrets.TELEGRAM_TOKEN }}
