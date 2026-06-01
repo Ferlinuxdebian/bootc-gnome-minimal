@@ -51,6 +51,7 @@ jobs:
       - name: Build da imagem
         run: |
           buildah build \
+            --skip-unused-stages=false \
             --security-opt label=disable \
             -t "${{ steps.meta.outputs.primary }}" \
             -f Containerfile \
