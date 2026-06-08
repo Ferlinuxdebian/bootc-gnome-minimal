@@ -82,7 +82,8 @@ RUN --mount=from=final,src=/,target=/chunkah,ro \
         chunkah build --max-layers 128 \
           --label ostree.commit- \
           --label ostree.final-diffid- \
-          > /run/src/out.ociarchive
-FROM oci-archive:out.ociarchive
+          --output oci:/run/src/out.oci
+
+FROM oci:out.oci
 LABEL ostree.bootable="true"
 LABEL containers.bootc="1"
