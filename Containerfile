@@ -49,11 +49,11 @@ RUN mkdir -vp /var/roothome /data /var/home && \
 
 # Instalação do gnome-shell minimalista
 RUN dnf5 install gnome-shell --setopt=install_weak_deps=False -y && \
-dnf5 clean all && \
-rm -rfv /var/cache/* \
-/var/lib/* \
-/var/log/* \
-/var/tmp/*
+    dnf5 clean all && \
+    rm -rfv /var/cache/* \
+    /var/lib/* \
+    /var/log/* \
+    /var/tmp/*
 
 # instalação dos pacotes necessários para o ambiente de desktop e a base
 RUN grep -v '^#' pacotes_necessarios | tr '\n' ' ' | xargs dnf5 install -y && \
@@ -79,10 +79,12 @@ FROM quay.io/coreos/chunkah AS chunkah
 ARG CHUNKAH_CONFIG_STR
 RUN --mount=from=final,src=/,target=/chunkah,ro \
     --mount=type=bind,target=/run/src,rw \
-        chunkah build --max-layers 128 \
-          --label ostree.commit- \
-          --label ostree.final-diffid- \
-          > /run/src/out.ociarchive
-FROM oci-archive:out.ociarchive
+    chunkah build --max-layers 128 \
+    --label ostree.commit- \
+    --label ostree.final-diffid- \
+    --output oci:/run/src/out
+
+FROM oci:out
 LABEL ostree.bootable="true"
 LABEL containers.bootc="1"
+
