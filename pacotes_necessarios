@@ -18,6 +18,7 @@ podman
 fpaste
 auditctl
 unzip
+zip
 usbutils
 sysfsutils
 
