@@ -1,5 +1,4 @@
-# Aqui são os pacote referentes ao Desktop no caso Gnome, mas pode ser alterado para outro facilmente colocando-os aqui
-evince-thumbnailer
+# Pacotes de ambiente de desktop
 glycin-thumbnailer
 gnome-epub-thumbnailer
 libnma
@@ -8,3 +7,7 @@ ibus-gtk4
 gnome-shell-extension-appindicator
 nautilus
 ptyxis
+
+# extensões do gnome
+gnome-shell-extension-blur-my-shell
+gnome-shell-extension-appindicator
