@@ -24,6 +24,7 @@ sysfsutils
 
 # Pacotes não essênciais (pode ser alterado a gosto)
 @virtualization
+distrobox
 featherpad
 btrfs-assistant
 ps_mem
