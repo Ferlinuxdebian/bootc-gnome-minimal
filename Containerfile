@@ -55,16 +55,9 @@ RUN dnf5 install gnome-shell --setopt=install_weak_deps=False -y && \
     /var/log/* \
     /var/tmp/*
 
-# Instalação dos pacotes necessários para o ambiente de desktop e a base
+# instalação dos pacotes necessários para o ambiente de desktop e a base
 RUN grep -v '^#' pacotes_necessarios | tr '\n' ' ' | xargs dnf5 install -y && \
-    dnf5 clean all && \
-    rm -rfv /var/cache/* \
-    /var/lib/* \
-    /var/log/* \
-    /var/tmp/*
-
-# Instalação dos pacotes necessários para o ambiente de desktop
-RUN grep -v '^#' pacotes_desktop | tr '\n' ' ' | xargs dnf5 install -y && \
+    grep -v '^#' pacotes_desktop | tr '\n' ' ' | xargs dnf5 install -y && \
     systemctl mask systemd-remount-fs.service && \
     systemctl mask akmods-keygen@akmods-keygen.service && \
     systemctl enable libvirtd.service && \
