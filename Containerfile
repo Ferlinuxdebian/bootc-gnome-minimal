@@ -41,11 +41,6 @@ RUN mkdir -vp /var/roothome /data /var/home && \
     chmod +x /usr/bin/post-install.sh && \
     systemctl enable post-install.service && \
     rm -rvf kmod-nvidia-*.rpm nvidia-kmod-common*.rpm nvidia-driver-cuda*.rpm && \
-    dnf5 clean all && \
-    rm -rfv /var/cache/* \
-    /var/lib/* \
-    /var/log/* \
-    /var/tmp/*
     # Instalação do gnome-shell minimalista
     dnf5 install gnome-shell --setopt=install_weak_deps=False -y && \
     # instalação dos pacotes necessários para o ambiente de desktop e a base
