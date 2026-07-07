@@ -24,22 +24,14 @@ sysfsutils
 
 # Pacotes não essênciais (pode ser alterado a gosto)
 @virtualization
-distrobox
 featherpad
 btrfs-assistant
-micro
-nvtop
-xclip
 ps_mem
 copyq
 libva-nvidia-driver
-ripgrep
 bash-color-prompt
 fira-code-fonts
-btop
-fastfetch
 adw-gtk3-theme
-gum
 
 # Drivers da Nvidia (se você não tem nvidia, pode remover a versão é sempre a 580 negativo17)
 nvidia-gpu-firmware

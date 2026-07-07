@@ -41,10 +41,22 @@ RUN mkdir -vp /var/roothome /data /var/home && \
     chmod +x /usr/bin/post-install.sh && \
     systemctl enable post-install.service && \
     rm -rvf kmod-nvidia-*.rpm nvidia-kmod-common*.rpm nvidia-driver-cuda*.rpm && \
-    # Instalação do gnome-shell minimalista
-    dnf5 install gnome-shell --setopt=install_weak_deps=False -y && \
-    # instalação dos pacotes necessários para o ambiente de desktop e a base
-    grep -v '^#' pacotes_necessarios | tr '\n' ' ' | xargs dnf5 install -y && \
+    dnf5 clean all && \
+    rm -rfv /var/cache/* \
+    /var/lib/* \
+    /var/log/* \
+    /var/tmp/*
+
+# Instalação do gnome-shell minimalista
+RUN dnf5 install gnome-shell --setopt=install_weak_deps=False -y && \
+    dnf5 clean all && \
+    rm -rfv /var/cache/* \
+    /var/lib/* \
+    /var/log/* \
+    /var/tmp/*
+
+# instalação dos pacotes necessários para o ambiente de desktop e a base
+RUN grep -v '^#' pacotes_necessarios | tr '\n' ' ' | xargs dnf5 install -y && \
     grep -v '^#' pacotes_desktop | tr '\n' ' ' | xargs dnf5 install -y && \
     systemctl mask systemd-remount-fs.service && \
     systemctl mask akmods-keygen@akmods-keygen.service && \
@@ -58,6 +70,9 @@ RUN mkdir -vp /var/roothome /data /var/home && \
     /var/tmp/* \
     /var/usrlocal/share/applications/mimeinfo.cache \
     /var/roothome/.*
+
+# Verificação da imagem com o bootc container lint
+RUN bootc container lint
 
 # Otimização da imagem final usando o chunkah aproveitando layers compartilhados
 FROM quay.io/coreos/chunkah AS chunkah
