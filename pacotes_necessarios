@@ -34,6 +34,7 @@ libva-nvidia-driver
 bash-color-prompt
 fira-code-fonts
 adw-gtk3-theme
+gum
 
 # Drivers da Nvidia (se você não tem nvidia, pode remover a versão é sempre a 580 negativo17)
 nvidia-gpu-firmware
