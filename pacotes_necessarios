@@ -26,6 +26,7 @@ sysfsutils
 @virtualization
 distrobox
 featherpad
+micro
 btrfs-assistant
 ps_mem
 copyq
