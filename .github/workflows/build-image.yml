@@ -1,90 +1,90 @@
-name: Build e Push da Imagem Bootc
+name: Build and Push bootc-gnome-minimal
+
 on:
   schedule:
-  - cron: '0 5 * * *'
+    - cron: '30 15 * * *' # Executa às 12:30 BRT
   push:
     branches:
       - main
     paths-ignore:
-      - 'README.md'
+      - '**.md'
   workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ferlinuxdebian/bootc-gnome-minimal
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  build-and-push:
+  build-push:
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
+      id-token: write # Necessário se optar por usar assinatura com cosign futuramente
 
     steps:
-      - name: Checkout do código
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Liberar espaço em disco
-        run: |
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
-            "/usr/local/share/boost" "$AGENT_TOOLSDIRECTORY"
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-      - name: Gerar metadados do build
+      # Gera as tags automaticamente (Prática Bluefin: mantém latest e cria tag por data)
+      - name: Generate Image Metadata
         id: meta
-        run: |
-          VERSION=$(grep '^FROM' Containerfile | head -n 1 | awk -F: '{print $2}' | awk '{print $1}')
-          DATE=$(TZ='America/Sao_Paulo' date +'%Y%m%d-%H%M')
-          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
-          PRIMARY="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${VERSION}-${DATE}"
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value={{date 'YYYYMMDD'}}
+            type=sha,format=short
 
-          echo "version=${VERSION}"     >> $GITHUB_OUTPUT
-          echo "date=${DATE}"           >> $GITHUB_OUTPUT
-          echo "short_sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
-          echo "primary=${PRIMARY}"     >> $GITHUB_OUTPUT
+      # Login automático no GitHub Packages usando o token nativo do fluxo
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Login no GHCR
-        run: |
-          echo "${{ secrets.GITHUB_TOKEN }}" | buildah login \
-            -u "${{ github.actor }}" --password-stdin "${{ env.REGISTRY }}"
+      # Build e Push otimizados com cache nativo do GitHub Actions
+      - name: Build and Push Image
+        id: push-step
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Containerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-      - name: Build da imagem
-        run: |
-          buildah build \
-            --skip-unused-stages=false \
-            --security-opt label=disable \
-            -t "${{ steps.meta.outputs.primary }}" \
-            -f Containerfile \
-            -v "$(pwd):/run/src" \
-            .
-
-      - name: Push da tag principal
-        run: buildah push "${{ steps.meta.outputs.primary }}"
-
-      - name: Aplicar tags adicionais via skopeo
-        run: |
-          VERSION="${{ steps.meta.outputs.version }}"
-          SHORT_SHA="${{ steps.meta.outputs.short_sha }}"
-          BASE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
-          CREDS="${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}"
-
-          for TAG in "${VERSION}-latest" "latest" "main" "sha-${SHORT_SHA}"; do
-            echo "→ Copiando manifesto para :${TAG}"
-            skopeo copy \
-              --src-creds  "${CREDS}" \
-              --dest-creds "${CREDS}" \
-              "docker://${{ steps.meta.outputs.primary }}" \
-              "docker://${BASE}:${TAG}"
-          done
-
-      - name: Notificar no Telegram
-        if: always()
+      # Envio de notificação para o Telegram em caso de Sucesso
+      - name: Telegram Notification (Success)
+        if: success()
         uses: appleboy/telegram-action@master
         with:
-          to: ${{ secrets.TELEGRAM_TO }}
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
           token: ${{ secrets.TELEGRAM_TOKEN }}
           message: |
-            ${{ job.status == 'success' && '✅ Rebuild Concluído!' || '❌ Erro no Rebuild!' }}
-            📦 Base: ${{ steps.meta.outputs.version }}
-            🏷️ Tag: ${{ steps.meta.outputs.version }}-${{ steps.meta.outputs.date }}
-            🔗 ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            ✅ Imagem bootc-gnome-minimal compilada com sucesso!
+            
+            Repositório: ${{ github.repository }}
+            Commit: ${{ github.sha }}
+            Tags geradas: 
+            - latest
+            - ${{ steps.meta.outputs.version }}
+
+      # Envio de notificação para o Telegram em caso de Falha
+      - name: Telegram Notification (Failure)
+        if: failure()
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          message: |
+            ❌ Erro na compilação da imagem bootc-gnome-minimal!
+            
+            Verifique os logs em: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
