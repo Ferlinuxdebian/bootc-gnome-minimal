@@ -24,6 +24,8 @@ jobs:
     steps:
       - name: Checkout do código
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
 
       - name: Liberar espaço em disco
         run: |
@@ -33,15 +35,17 @@ jobs:
       - name: Gerar metadados do build
         id: meta
         run: |
-          VERSION=$(grep '^FROM' Containerfile | head -n 1 | awk -F: '{print $2}' | awk '{print $1}')
+          VERSION=$(grep '^FROM' Containerfile | head -n 2 | tail -n 1 | awk -F: '{print $2}' | awk '{print $1}')
           DATE=$(TZ='America/Sao_Paulo' date +'%Y%m%d-%H%M')
           SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
           PRIMARY="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${VERSION}-${DATE}"
+          TIMESTAMP=$(git log -1 --format=%ct)
 
           echo "version=${VERSION}"     >> $GITHUB_OUTPUT
           echo "date=${DATE}"           >> $GITHUB_OUTPUT
           echo "short_sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
           echo "primary=${PRIMARY}"     >> $GITHUB_OUTPUT
+          echo "timestamp=${TIMESTAMP}" >> $GITHUB_OUTPUT
 
       - name: Login no GHCR
         run: |
@@ -53,6 +57,9 @@ jobs:
           buildah build \
             --skip-unused-stages=false \
             --security-opt label=disable \
+            --source-date-epoch "${{ steps.meta.outputs.timestamp }}" \
+            --rewrite-timestamp \
+            --build-arg SOURCE_DATE_EPOCH="${{ steps.meta.outputs.timestamp }}" \
             -t "${{ steps.meta.outputs.primary }}" \
             -f Containerfile \
             -v "$(pwd):/run/src" \
