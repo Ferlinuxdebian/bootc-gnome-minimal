@@ -48,17 +48,18 @@ jobs:
       - name: Build da Imagem usando Podman do Hospedeiro
         id: build-image
         run: |
-          # 1. Criamos a pasta no hospedeiro onde o chunkah vai salvar o output
-          sudo mkdir -p /run/src/out
+          # 1. Garantimos que a pasta mãe existe e limpamos qualquer resíduo anterior de out
+          sudo mkdir -p /run/src
+          sudo rm -rf /run/src/out
 
-          # 2. Executamos APENAS o estágio do chunkah para gerar os arquivos OCI no hospedeiro
+          # 2. Executamos APENAS o estágio do chunkah para gerar os arquivos OCI (ele criará a pasta out)
           sudo podman build \
             --target chunkah \
             -f Containerfile \
             -v /run/src:/run/src \
             .
 
-          # 3. Agora que o /run/src/out/index.json FOI GERADO pelo chunkah, rodamos o build final mapeando o contexto
+          # 3. Agora que o diretório foi gerado pelo chunkah, rodamos o build final mapeando o contexto
           sudo podman build \
             --build-arg SOURCE_DATE_EPOCH="${{ env.TIMESTAMP }}" \
             --build-context oci:/run/src/out=oci:/run/src/out \
