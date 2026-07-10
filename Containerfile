@@ -30,8 +30,8 @@ RUN mkdir -vp /var/roothome /data /var/home && \
     kver="$(rpm -q kernel-core --queryformat '%{VERSION}-%{RELEASE}.%{ARCH}')" && \
     dracut -f --reproducible /usr/lib/modules/${kver}/initramfs.img ${kver} && \
     mv -v zram-generator.conf /etc/systemd/ && \
-    dnf5 download nvidia-driver-cuda nvidia-kmod-common & \
-    rpm -i --nodeps ./nvidia-driver-cuda*.rpm ./nvidia-kmod-common*.rpm && \
+    dnf5 download nvidia-kmod-common nvidia-driver-cuda && \
+    rpm -vi --nodeps nvidia-driver-cuda*.rpm nvidia-kmod-common*.rpm && \
     dnf5 -y install ./kmod-nvidia-*.rpm && \
     rm -rvf /opt && mkdir -vp /var/opt && ln -vs /var/opt /opt && \
     mkdir -vp /var/usrlocal && mv -v /usr/local/* /var/usrlocal/ && \
