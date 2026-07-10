@@ -51,7 +51,6 @@ jobs:
         run: |
           docker run --rm --privileged \
             -v "$(pwd):/workspace" \
-            -w /workspace \
             -e GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN }}" \
             -e GITHUB_ACTOR="${{ github.actor }}" \
             -e REGISTRY="${{ env.REGISTRY }}" \
@@ -65,11 +64,14 @@ jobs:
               set -euo pipefail
               dnf install -y buildah skopeo
 
-              # Configuração necessária para permitir overlays dentro do container
-              mkdir -p /var/lib/containers/storage
-              
+              # 1. Cria um ambiente de build puramente interno (evita o bug de overlay no volume bind-mount)
+              mkdir -p /build /run/src
+              cp -r /workspace/. /build
+              cd /build
+
               echo "$GITHUB_TOKEN" | buildah login -u "$GITHUB_ACTOR" --password-stdin "$REGISTRY"
 
+              # 2. Executa o build usando o isolamento nativo (overlay) dentro do próprio container
               buildah build \
                 --storage-driver overlay \
                 --skip-unused-stages=false \
@@ -79,11 +81,12 @@ jobs:
                 --build-arg SOURCE_DATE_EPOCH="$TIMESTAMP" \
                 -t "$PRIMARY" \
                 -f Containerfile \
-                -v "$(pwd):/run/src" \
+                -v "/run/src:/run/src" \
                 .
 
               buildah push "$PRIMARY"
 
+              # 3. Garante a replicação das tags necessárias no registro
               for TAG in "${VERSION}-latest" "latest" "main" "sha-${SHORT_SHA}"; do
                 echo "→ Copiando manifesto para :${TAG}"
                 skopeo copy \
