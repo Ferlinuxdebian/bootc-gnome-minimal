@@ -48,7 +48,7 @@ jobs:
       - name: Build da Imagem usando Podman do Hospedeiro
         id: build-image
         run: |
-          # 1. Garantimos a limpeza e criação do diretório em /var/tmp (que possui espaço em disco real)
+          # 1. Garantimos a limpeza e criação do diretório em /var/tmp (espaço em disco real)
           sudo mkdir -p /var/tmp
           sudo rm -rf /var/tmp/out
 
@@ -59,7 +59,10 @@ jobs:
             -v /var/tmp:/run/src \
             .
 
-          # 3. Rodamos o build final mapeando o contexto esperado pelo Containerfile para a pasta física /var/tmp/out
+          # 3. Criamos a pasta fantasma /run/src no hospedeiro para o Podman não reclamar de "no such file or directory"
+          sudo mkdir -p /run/src
+
+          # 4. Rodamos o build final mapeando o contexto esperado pelo Containerfile para a pasta física /var/tmp/out
           sudo podman build \
             --build-arg SOURCE_DATE_EPOCH="${{ env.TIMESTAMP }}" \
             --build-context oci:/run/src/out=oci:/var/tmp/out \
