@@ -48,24 +48,24 @@ jobs:
       - name: Build da Imagem usando Podman do Hospedeiro
         id: build-image
         run: |
-          # 1. Garantimos que a pasta mãe existe e limpamos qualquer resíduo anterior de out
-          sudo mkdir -p /run/src
-          sudo rm -rf /run/src/out
+          # 1. Garantimos a limpeza e criação do diretório em /var/tmp (que possui espaço em disco real)
+          sudo mkdir -p /var/tmp
+          sudo rm -rf /var/tmp/out
 
-          # 2. Executamos APENAS o estágio do chunkah para gerar os arquivos OCI (ele criará a pasta out)
+          # 2. Executamos o estágio do chunkah redirecionando o volume interno /run/src para o /var/tmp físico
           sudo podman build \
             --target chunkah \
             -f Containerfile \
-            -v /run/src:/run/src \
+            -v /var/tmp:/run/src \
             .
 
-          # 3. Agora que o diretório foi gerado pelo chunkah, rodamos o build final mapeando o contexto
+          # 3. Rodamos o build final mapeando o contexto esperado pelo Containerfile para a pasta física /var/tmp/out
           sudo podman build \
             --build-arg SOURCE_DATE_EPOCH="${{ env.TIMESTAMP }}" \
-            --build-context oci:/run/src/out=oci:/run/src/out \
+            --build-context oci:/run/src/out=oci:/var/tmp/out \
             -t "${{ env.PRIMARY }}" \
             -f Containerfile \
-            -v /run/src:/run/src \
+            -v /var/tmp:/run/src \
             .
 
       - name: Aplicar Tags Adicionais localmente
