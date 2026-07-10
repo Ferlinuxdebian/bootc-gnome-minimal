@@ -47,12 +47,12 @@ RUN mkdir -vp /var/roothome /data /var/home && \
     dnf5 clean all && \
     rm -rfv /var/cache/dnf /var/cache/libdnf /var/log/* /var/tmp/* /tmp/* nvidia-driver-cuda*.rpm nvidia-kmod-common*.rpm
 
-# instalalação do gnome shell minimalista
+# instalação do gnome shell minimalista
 RUN dnf5 install gnome-shell --setopt=install_weak_deps=False -y && \
     dnf5 clean all && \
     rm -rfv /var/cache/dnf /var/cache/libdnf /var/log/* /var/tmp/* /tmp/*
 
-# Instalaçãod do pacotes de desktop e demais necessários
+# Instalação do pacotes de desktop e demais necessários
 RUN grep -v '^#' pacotes_necessarios | tr '\n' ' ' | xargs dnf5 install -y && \
     grep -v '^#' pacotes_desktop | tr '\n' ' ' | xargs dnf5 install -y && \
     systemctl mask systemd-remount-fs.service && \
@@ -76,6 +76,6 @@ RUN --mount=from=final,src=/,target=/chunkah,ro \
     --label ostree.final-diffid- \
     --output oci:/run/src/out
 
-FROM oci:out
+FROM oci:/run/src/out
 LABEL ostree.bootable="true"
 LABEL containers.bootc="1"
