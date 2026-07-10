@@ -1,7 +1,7 @@
 name: Build e Push da Imagem Bootc
 on:
   schedule:
-  - cron: '0 5 * * *'
+    - cron: '30 15 * * *'
   push:
     branches:
       - main
@@ -47,10 +47,6 @@ jobs:
           echo "primary=${PRIMARY}"     >> $GITHUB_OUTPUT
           echo "timestamp=${TIMESTAMP}" >> $GITHUB_OUTPUT
 
-      # buildah do apt no ubuntu-latest é < 1.41 e não tem --source-date-epoch /
-      # --rewrite-timestamp reais (só --timestamp, que não reescreve mtime dos
-      # arquivos dentro da layer). Por isso o build roda dentro de um container
-      # Fedora, que traz buildah atual via dnf.
       - name: Build, push e tags via container Fedora (buildah atual)
         run: |
           docker run --rm --privileged \
@@ -69,9 +65,13 @@ jobs:
               set -euo pipefail
               dnf install -y buildah skopeo
 
+              # Configuração necessária para permitir overlays dentro do container
+              mkdir -p /var/lib/containers/storage
+              
               echo "$GITHUB_TOKEN" | buildah login -u "$GITHUB_ACTOR" --password-stdin "$REGISTRY"
 
               buildah build \
+                --storage-driver overlay \
                 --skip-unused-stages=false \
                 --security-opt label=disable \
                 --source-date-epoch "$TIMESTAMP" \
