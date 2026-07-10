@@ -25,13 +25,13 @@ COPY --from=builder /var/cache/akmods/nvidia/kmod-nvidia*.rpm ./
 COPY 10-nvidia-args.toml locale.conf post-install.sh pacotes_desktop pacotes_necessarios post-install.service vconsole.conf zram-generator.conf ./
 
 RUN mkdir -vp /var/roothome /data /var/home && \
-    dnf5 -y install kernel-modules-extra --refresh && \
+    dnf5 -y install kernel-modules-extra && \
     printf 'omit_dracutmodules+=" nfs "\nomit_drivers+=" nfs nfsv3 nfsv4 nfs_acl nfs_common sunrpc rxrpc rpcrdma auth_rpcgss rpcsec_gss_krb5 "\n' | tee /etc/dracut.conf.d/no-nfs.conf && \
     kver="$(rpm -q kernel-core --queryformat '%{VERSION}-%{RELEASE}.%{ARCH}')" && \
     dracut -f --reproducible /usr/lib/modules/${kver}/initramfs.img ${kver} && \
     mv -v zram-generator.conf /etc/systemd/ && \
-    dnf5 install -y nvidia-driver-cuda nvidia-kmod-common \
-        --setopt=install_weak_deps=False --refresh && \
+    dnf5 download nvidia-driver-cuda nvidia-kmod-common & \
+    rpm -i --nodeps ./nvidia-driver-cuda*.rpm ./nvidia-kmod-common*.rpm && \
     dnf5 -y install ./kmod-nvidia-*.rpm && \
     rm -rvf /opt && mkdir -vp /var/opt && ln -vs /var/opt /opt && \
     mkdir -vp /var/usrlocal && mv -v /usr/local/* /var/usrlocal/ && \
@@ -45,7 +45,7 @@ RUN mkdir -vp /var/roothome /data /var/home && \
     systemctl enable post-install.service && \
     rm -rvf kmod-nvidia-*.rpm && \
     dnf5 clean all && \
-    rm -rfv /var/cache/dnf /var/cache/libdnf /var/log/* /var/tmp/* /tmp/*
+    rm -rfv /var/cache/dnf /var/cache/libdnf /var/log/* /var/tmp/* /tmp/* nvidia-driver-cuda*.rpm nvidia-kmod-common*.rpm
 
 # instalalação do gnome shell minimalista
 RUN dnf5 install gnome-shell --setopt=install_weak_deps=False -y && \
