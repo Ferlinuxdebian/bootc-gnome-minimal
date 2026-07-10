@@ -39,7 +39,6 @@ gum
 # Drivers da Nvidia (se você não tem nvidia, pode remover a versão é sempre a 580 negativo17)
 nvidia-gpu-firmware
 nvidia-modprobe
-ocl-icd
 opencl-filesystem
 libnvidia-cfg
 libnvidia-gpucomp
