@@ -29,7 +29,7 @@ jobs:
           fetch-depth: 1
 
       - name: Maximizar espaço em disco
-        uses: ublue-os/remove-unwanted-software@main
+        uses: ublue-os/remove-unwanted-software@v7
 
       - name: Gerar metadados do build
         id: meta
