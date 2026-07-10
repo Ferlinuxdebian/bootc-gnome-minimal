@@ -47,41 +47,52 @@ jobs:
           echo "primary=${PRIMARY}"     >> $GITHUB_OUTPUT
           echo "timestamp=${TIMESTAMP}" >> $GITHUB_OUTPUT
 
-      - name: Login no GHCR
+      # buildah do apt no ubuntu-latest é < 1.41 e não tem --source-date-epoch /
+      # --rewrite-timestamp reais (só --timestamp, que não reescreve mtime dos
+      # arquivos dentro da layer). Por isso o build roda dentro de um container
+      # Fedora, que traz buildah atual via dnf.
+      - name: Build, push e tags via container Fedora (buildah atual)
         run: |
-          echo "${{ secrets.GITHUB_TOKEN }}" | buildah login \
-            -u "${{ github.actor }}" --password-stdin "${{ env.REGISTRY }}"
+          docker run --rm --privileged \
+            -v "$(pwd):/workspace" \
+            -w /workspace \
+            -e GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN }}" \
+            -e GITHUB_ACTOR="${{ github.actor }}" \
+            -e REGISTRY="${{ env.REGISTRY }}" \
+            -e IMAGE_NAME="${{ env.IMAGE_NAME }}" \
+            -e PRIMARY="${{ steps.meta.outputs.primary }}" \
+            -e VERSION="${{ steps.meta.outputs.version }}" \
+            -e SHORT_SHA="${{ steps.meta.outputs.short_sha }}" \
+            -e TIMESTAMP="${{ steps.meta.outputs.timestamp }}" \
+            quay.io/fedora/fedora:42 \
+            bash -c '
+              set -euo pipefail
+              dnf install -y buildah skopeo
 
-      - name: Build da imagem
-        run: |
-          buildah build \
-            --skip-unused-stages=false \
-            --security-opt label=disable \
-            --timestamp "${{ steps.meta.outputs.timestamp }}" \
-            --build-arg SOURCE_DATE_EPOCH="${{ steps.meta.outputs.timestamp }}" \
-            -t "${{ steps.meta.outputs.primary }}" \
-            -f Containerfile \
-            -v "$(pwd):/run/src" \
-            .
+              echo "$GITHUB_TOKEN" | buildah login -u "$GITHUB_ACTOR" --password-stdin "$REGISTRY"
 
-      - name: Push da tag principal
-        run: buildah push "${{ steps.meta.outputs.primary }}"
+              buildah build \
+                --skip-unused-stages=false \
+                --security-opt label=disable \
+                --source-date-epoch "$TIMESTAMP" \
+                --rewrite-timestamp \
+                --build-arg SOURCE_DATE_EPOCH="$TIMESTAMP" \
+                -t "$PRIMARY" \
+                -f Containerfile \
+                -v "$(pwd):/run/src" \
+                .
 
-      - name: Aplicar tags adicionais via skopeo
-        run: |
-          VERSION="${{ steps.meta.outputs.version }}"
-          SHORT_SHA="${{ steps.meta.outputs.short_sha }}"
-          BASE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
-          CREDS="${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}"
+              buildah push "$PRIMARY"
 
-          for TAG in "${VERSION}-latest" "latest" "main" "sha-${SHORT_SHA}"; do
-            echo "→ Copiando manifesto para :${TAG}"
-            skopeo copy \
-              --src-creds  "${CREDS}" \
-              --dest-creds "${CREDS}" \
-              "docker://${{ steps.meta.outputs.primary }}" \
-              "docker://${BASE}:${TAG}"
-          done
+              for TAG in "${VERSION}-latest" "latest" "main" "sha-${SHORT_SHA}"; do
+                echo "→ Copiando manifesto para :${TAG}"
+                skopeo copy \
+                  --src-creds  "$GITHUB_ACTOR:$GITHUB_TOKEN" \
+                  --dest-creds "$GITHUB_ACTOR:$GITHUB_TOKEN" \
+                  "docker://$PRIMARY" \
+                  "docker://$REGISTRY/$IMAGE_NAME:$TAG"
+              done
+            '
 
       - name: Notificar no Telegram
         if: always()
