@@ -57,8 +57,7 @@ jobs:
           buildah build \
             --skip-unused-stages=false \
             --security-opt label=disable \
-            --source-date-epoch "${{ steps.meta.outputs.timestamp }}" \
-            --rewrite-timestamp \
+            --timestamp "${{ steps.meta.outputs.timestamp }}" \
             --build-arg SOURCE_DATE_EPOCH="${{ steps.meta.outputs.timestamp }}" \
             -t "${{ steps.meta.outputs.primary }}" \
             -f Containerfile \
