@@ -76,6 +76,6 @@ RUN --mount=from=final,src=/,target=/chunkah,ro \
     --label ostree.final-diffid- \
     --output oci:/run/src/out
 
-FROM oci:/run/src/out
+FROM oci:/var/tmp/out
 LABEL ostree.bootable="true"
 LABEL containers.bootc="1"
