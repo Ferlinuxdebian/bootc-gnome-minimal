@@ -85,15 +85,3 @@ jobs:
             echo "→ Enviando tag: ${TAG}"
             sudo podman push "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${TAG}"
           done
-
-      - name: Notificar no Telegram
-        if: always()
-        uses: appleboy/telegram-action@master
-        with:
-          to: ${{ secrets.TELEGRAM_TO }}
-          token: ${{ secrets.TELEGRAM_TOKEN }}
-          message: |
-            ${{ job.status == 'success' && '✅ Rebuild Concluído!' || '❌ Erro no Rebuild!' }}
-            📦 Base: ${{ env.VERSION }}
-            🏷️ Tag: ${{ env.VERSION }}-${{ github.run_id }}
-            🔗 ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
