@@ -59,13 +59,13 @@ jobs:
             -v /var/tmp:/run/src \
             .
 
-          # 3. Criamos a pasta fantasma /run/src no hospedeiro para o Podman não reclamar de "no such file or directory"
+          # 3. Criamos a pasta fantasma /run/src no hospedeiro para passar na validação de caminhos do Podman
           sudo mkdir -p /run/src
 
-          # 4. Rodamos o build final mapeando o contexto esperado pelo Containerfile para a pasta física /var/tmp/out
+          # 4. Rodamos o build final mapeando o contexto literal esperado pelo Containerfile para a pasta física /var/tmp/out
           sudo podman build \
             --build-arg SOURCE_DATE_EPOCH="${{ env.TIMESTAMP }}" \
-            --build-context oci:/run/src/out=oci:/var/tmp/out \
+            --build-context /run/src/out=oci:/var/tmp/out \
             -t "${{ env.PRIMARY }}" \
             -f Containerfile \
             -v /var/tmp:/run/src \
