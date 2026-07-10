@@ -48,15 +48,15 @@ jobs:
       - name: Build da Imagem usando Podman do Hospedeiro
         id: build-image
         run: |
-          # Criamos a estrutura de pastas necessária no hospedeiro para o Chunkah
-          sudo mkdir -p /var/tmp/out
+          # Criamos a estrutura exata exigida pelo Containerfile no hospedeiro
+          sudo mkdir -p /run/src/out
 
-          # Mapeamos /var/tmp diretamente para espelhar o caminho no FROM oci do Containerfile
+          # Espelhamos /run/src para dentro do ambiente de build do Podman
           sudo podman build \
             --build-arg SOURCE_DATE_EPOCH="${{ env.TIMESTAMP }}" \
             -t "${{ env.PRIMARY }}" \
             -f Containerfile \
-            -v /var/tmp:/var/tmp \
+            -v /run/src:/run/src \
             .
 
       - name: Aplicar Tags Adicionais localmente
