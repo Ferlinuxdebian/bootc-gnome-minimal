@@ -1,23 +1,22 @@
-name: Build container image
+name: Build e Push da Imagem Bootc
 on:
   schedule:
-    - cron: '30 15 * * *'  # 12:30 BRT
+  - cron: '0 5 * * *'
   push:
     branches:
       - main
     paths-ignore:
-      - '**/README.md'
+      - 'README.md'
   workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ferlinuxdebian/bootc-gnome-minimal
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  build_push:
-    name: Build and push image
-    runs-on: ubuntu-24.04
-
+  build-and-push:
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
@@ -25,75 +24,67 @@ jobs:
     steps:
       - name: Checkout do código
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
 
-      - name: Maximizar espaço em disco
-        uses: ublue-os/remove-unwanted-software@v7
+      - name: Liberar espaço em disco
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+            "/usr/local/share/boost" "$AGENT_TOOLSDIRECTORY"
 
       - name: Gerar metadados do build
         id: meta
         run: |
-          VERSION=$(grep '^FROM' Containerfile | head -n 2 | tail -n 1 | awk -F: '{print $2}' | awk '{print $1}')
+          VERSION=$(grep '^FROM' Containerfile | head -n 1 | awk -F: '{print $2}' | awk '{print $1}')
           DATE=$(TZ='America/Sao_Paulo' date +'%Y%m%d-%H%M')
           SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
           PRIMARY="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${VERSION}-${DATE}"
-          TIMESTAMP=$(git log -1 --format=%ct)
 
-          echo "VERSION=${VERSION}"     >> $GITHUB_ENV
-          echo "PRIMARY=${PRIMARY}"     >> $GITHUB_ENV
-          echo "SHORT_SHA=${SHORT_SHA}" >> $GITHUB_ENV
-          echo "TIMESTAMP=${TIMESTAMP}" >> $GITHUB_ENV
+          echo "version=${VERSION}"     >> $GITHUB_OUTPUT
+          echo "date=${DATE}"           >> $GITHUB_OUTPUT
+          echo "short_sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
+          echo "primary=${PRIMARY}"     >> $GITHUB_OUTPUT
 
-      - name: Build da Imagem usando Podman do Hospedeiro
-        id: build-image
+      - name: Login no GHCR
         run: |
-          # 1. Garantimos a limpeza e criação do diretório em /var/tmp (espaço em disco real)
-          sudo mkdir -p /var/tmp
-          sudo rm -rf /var/tmp/out
+          echo "${{ secrets.GITHUB_TOKEN }}" | buildah login \
+            -u "${{ github.actor }}" --password-stdin "${{ env.REGISTRY }}"
 
-          # 2. Executamos o estágio do chunkah redirecionando o volume interno /run/src para o /var/tmp físico
-          sudo podman build \
-            --target chunkah \
+      - name: Build da imagem
+        run: |
+          buildah build \
+            --skip-unused-stages=false \
+            --security-opt label=disable \
+            -t "${{ steps.meta.outputs.primary }}" \
             -f Containerfile \
-            -v /var/tmp:/run/src \
+            -v "$(pwd):/run/src" \
             .
 
-          # 3. Criamos a pasta fantasma /run/src no hospedeiro para passar na validação de caminhos do Podman
-          sudo mkdir -p /run/src
+      - name: Push da tag principal
+        run: buildah push "${{ steps.meta.outputs.primary }}"
 
-          # 4. Rodamos o build final mapeando o contexto literal esperado pelo Containerfile para a pasta física /var/tmp/out
-          sudo podman build \
-            --build-arg SOURCE_DATE_EPOCH="${{ env.TIMESTAMP }}" \
-            --build-context /run/src/out=oci:/var/tmp/out \
-            -t "${{ env.PRIMARY }}" \
-            -f Containerfile \
-            -v /var/tmp:/run/src \
-            .
-
-      - name: Aplicar Tags Adicionais localmente
+      - name: Aplicar tags adicionais via skopeo
         run: |
-          sudo podman tag "${{ env.PRIMARY }}" "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}-latest"
-          sudo podman tag "${{ env.PRIMARY }}" "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
-          sudo podman tag "${{ env.PRIMARY }}" "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:main"
-          sudo podman tag "${{ env.PRIMARY }}" "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${{ env.SHORT_SHA }}"
+          VERSION="${{ steps.meta.outputs.version }}"
+          SHORT_SHA="${{ steps.meta.outputs.short_sha }}"
+          BASE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
+          CREDS="${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}"
 
-      - name: Login no GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Push das imagens para o GHCR
-        run: |
-          # Autentica o comando sudo podman usando o token gerado pelo login-action
-          sudo podman login ghcr.io -u "${{ github.actor }}" -p "${{ secrets.GITHUB_TOKEN }}"
-          
-          echo "→ Enviando imagem primária..."
-          sudo podman push "${{ env.PRIMARY }}"
-          
-          for TAG in "${{ env.VERSION }}-latest" "latest" "main" "sha-${{ env.SHORT_SHA }}"; do
-            echo "→ Enviando tag: ${TAG}"
-            sudo podman push "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${TAG}"
+          for TAG in "${VERSION}-latest" "latest" "main" "sha-${SHORT_SHA}"; do
+            echo "→ Copiando manifesto para :${TAG}"
+            skopeo copy \
+              --src-creds  "${CREDS}" \
+              --dest-creds "${CREDS}" \
+              "docker://${{ steps.meta.outputs.primary }}" \
+              "docker://${BASE}:${TAG}"
           done
+
+      - name: Notificar no Telegram
+        if: always()
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_TO }}
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          message: |
+            ${{ job.status == 'success' && '✅ Rebuild Concluído!' || '❌ Erro no Rebuild!' }}
+            📦 Base: ${{ steps.meta.outputs.version }}
+            🏷️ Tag: ${{ steps.meta.outputs.version }}-${{ steps.meta.outputs.date }}
+            🔗 ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
