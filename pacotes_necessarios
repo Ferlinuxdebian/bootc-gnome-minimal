@@ -10,8 +10,6 @@ git
 tree
 langpacks-fonts-pt
 langpacks-pt_BR
-tuned
-tuned-ppd
 zram-generator
 spice-vdagent
 podman
