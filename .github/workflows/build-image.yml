@@ -55,22 +55,22 @@ jobs:
             -u "${{ github.actor }}" --password-stdin "${{ env.REGISTRY }}"
 
       - name: Build da imagem com Cache e Timestamps Determinísticos
-              run: |
-                BASE_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
-                
-                buildah build \
-                  --skip-unused-stages=false \
-                  --security-opt label=disable \
-                  --timestamp "${{ steps.meta.outputs.commit_timestamp }}" \
-                  --build-arg SOURCE_DATE_EPOCH="${{ steps.meta.outputs.commit_timestamp }}" \
-                  --cache-from "docker://${BASE_IMAGE}:build-cache" \
-                  --cache-to "docker://${BASE_IMAGE}:build-cache" \
-                  --layers \
-                  -t "${{ steps.meta.outputs.primary }}" \
-                  -f Containerfile \
-                  -v "$(pwd):/run/src" \
-                  .
-                  
+        run: |
+          BASE_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
+          
+          buildah build \
+            --skip-unused-stages=false \
+            --security-opt label=disable \
+            --timestamp "${{ steps.meta.outputs.commit_timestamp }}" \
+            --build-arg SOURCE_DATE_EPOCH="${{ steps.meta.outputs.commit_timestamp }}" \
+            --cache-from "docker://${BASE_IMAGE}:build-cache" \
+            --cache-to "docker://${BASE_IMAGE}:build-cache" \
+            --layers \
+            -t "${{ steps.meta.outputs.primary }}" \
+            -f Containerfile \
+            -v "$(pwd):/run/src" \
+            .
+
       - name: Push da tag principal
         run: buildah push "${{ steps.meta.outputs.primary }}"
 
