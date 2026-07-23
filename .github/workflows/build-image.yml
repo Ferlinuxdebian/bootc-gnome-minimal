@@ -57,14 +57,15 @@ jobs:
       - name: Build da imagem com Cache e Timestamps Determinísticos
         run: |
           BASE_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
+          CACHE_DEST="${BASE_IMAGE}:build-cache"
           
           buildah build \
             --skip-unused-stages=false \
             --security-opt label=disable \
             --timestamp "${{ steps.meta.outputs.commit_timestamp }}" \
             --build-arg SOURCE_DATE_EPOCH="${{ steps.meta.outputs.commit_timestamp }}" \
-            --cache-from "docker://${BASE_IMAGE}:build-cache" \
-            --cache-to "docker://${BASE_IMAGE}:build-cache" \
+            --cache-from "${CACHE_DEST}" \
+            --cache-to "${CACHE_DEST}" \
             --layers \
             -t "${{ steps.meta.outputs.primary }}" \
             -f Containerfile \
