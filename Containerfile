@@ -1,10 +1,5 @@
 # Primeiro estágio: Construção dos módulos NVIDIA (akmods)
 FROM quay.io/fedora/fedora-bootc:44 AS builder
-
-# Timestamp determinístico para reprodutibilidade de build
-ARG SOURCE_DATE_EPOCH
-ENV SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH}
-
 RUN dnf5 upgrade -y 'kernel*' --refresh && \
     dnf5 -y install kernel-devel wget --refresh && \
     KERNEL_VERSION="$(rpm -q kernel-core --queryformat '%{VERSION}-%{RELEASE}.%{ARCH}')" && \
@@ -14,11 +9,6 @@ RUN dnf5 upgrade -y 'kernel*' --refresh && \
 
 # Segundo estágio: Configuração do sistema e imagem final
 FROM quay.io/fedora/fedora-bootc:44 AS final
-
-# Timestamp determinístico injetado via build-arg no Buildah
-ARG SOURCE_DATE_EPOCH
-ENV SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH}
-
 LABEL ostree.bootable="true"
 LABEL containers.bootc="1"
 
