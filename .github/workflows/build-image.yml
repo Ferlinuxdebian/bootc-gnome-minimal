@@ -1,7 +1,7 @@
 name: Build e Push da Imagem Bootc
 on:
   schedule:
-  - cron: '0 5 * * *'
+    - cron: '0 5 * * *'
   push:
     branches:
       - main
@@ -24,6 +24,8 @@ jobs:
     steps:
       - name: Checkout do código
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
 
       - name: Liberar espaço em disco
         run: |
@@ -37,22 +39,34 @@ jobs:
           DATE=$(TZ='America/Sao_Paulo' date +'%Y%m%d-%H%M')
           SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
           PRIMARY="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${VERSION}-${DATE}"
+          
+          # Obter o timestamp Unix do último commit do Git para reprodutibilidade
+          COMMIT_TIMESTAMP=$(git log -1 --format=%ct)
 
-          echo "version=${VERSION}"     >> $GITHUB_OUTPUT
-          echo "date=${DATE}"           >> $GITHUB_OUTPUT
-          echo "short_sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
-          echo "primary=${PRIMARY}"     >> $GITHUB_OUTPUT
+          echo "version=${VERSION}"           >> $GITHUB_OUTPUT
+          echo "date=${DATE}"                 >> $GITHUB_OUTPUT
+          echo "short_sha=${SHORT_SHA}"       >> $GITHUB_OUTPUT
+          echo "primary=${PRIMARY}"           >> $GITHUB_OUTPUT
+          echo "commit_timestamp=${COMMIT_TIMESTAMP}" >> $GITHUB_OUTPUT
 
       - name: Login no GHCR
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | buildah login \
             -u "${{ github.actor }}" --password-stdin "${{ env.REGISTRY }}"
 
-      - name: Build da imagem
+      - name: Build da imagem com Cache e Timestamps Determinísticos
         run: |
+          BASE_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
+          CACHE_IMAGE="${BASE_IMAGE}:build-cache"
+          
           buildah build \
             --skip-unused-stages=false \
             --security-opt label=disable \
+            --timestamp "${{ steps.meta.outputs.commit_timestamp }}" \
+            --build-arg SOURCE_DATE_EPOCH="${{ steps.meta.outputs.commit_timestamp }}" \
+            --cache-from "${CACHE_IMAGE}" \
+            --cache-to "${CACHE_IMAGE}" \
+            --layers \
             -t "${{ steps.meta.outputs.primary }}" \
             -f Containerfile \
             -v "$(pwd):/run/src" \
