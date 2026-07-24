@@ -1,7 +1,7 @@
 name: Build e Push da Imagem Bootc
 on:
   schedule:
-  - cron: '0 5 * * *'
+    - cron: '0 5 * * *'
   push:
     branches:
       - main
@@ -30,6 +30,15 @@ jobs:
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
             "/usr/local/share/boost" "$AGENT_TOOLSDIRECTORY"
 
+      - name: Instalar oci-delta
+        run: |
+          OCI_DELTA_VERSION=$(curl -s https://api.github.com/repos/containers/oci-delta/releases/latest | grep -oP '"tag_name": "\K(.*)(?=")')
+          curl -L -o oci-delta.tar.gz "https://github.com/containers/oci-delta/releases/download/${OCI_DELTA_VERSION}/oci-delta-x86_64-unknown-linux-gnu.tar.gz" || \
+          curl -L -o oci-delta.tar.gz "https://github.com/containers/oci-delta/releases/latest/download/oci-delta-x86_64-unknown-linux-gnu.tar.gz"
+          tar -xzf oci-delta.tar.gz
+          sudo mv oci-delta /usr/local/bin/
+          sudo chmod +x /usr/local/bin/oci-delta
+
       - name: Gerar metadados do build
         id: meta
         run: |
@@ -45,12 +54,12 @@ jobs:
 
       - name: Login no GHCR
         run: |
-          echo "${{ secrets.GITHUB_TOKEN }}" | buildah login \
+          echo "${{ secrets.GITHUB_TOKEN }}" | podman login \
             -u "${{ github.actor }}" --password-stdin "${{ env.REGISTRY }}"
 
       - name: Build da imagem
         run: |
-          buildah build \
+          podman build \
             --skip-unused-stages=false \
             --security-opt label=disable \
             -t "${{ steps.meta.outputs.primary }}" \
@@ -58,8 +67,18 @@ jobs:
             -v "$(pwd):/run/src" \
             .
 
-      - name: Push da tag principal
-        run: buildah push "${{ steps.meta.outputs.primary }}"
+      - name: Processar e Push via oci-delta
+        run: |
+          BASE_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
+          NEW_IMAGE="${{ steps.meta.outputs.primary }}"
+
+          echo "→ Puxando imagem base anterior para calcular delta..."
+          podman pull "${BASE_IMAGE}" || true
+
+          echo "→ Gerando e aplicando delta com oci-delta..."
+          oci-delta push \
+            --creds "${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}" \
+            "${NEW_IMAGE}" "${BASE_IMAGE}"
 
       - name: Aplicar tags adicionais via skopeo
         run: |
