@@ -77,9 +77,10 @@ RUN bootc container lint
 # ============================================================================
 FROM quay.io/coreos/chunkah AS chunkah
 ARG CHUNKAH_CONFIG_STR
-# AJUSTE EXCLUSIVO DO BUILDKIT: Criamos um diretório temporário para a saída do OCI dentro do container
-RUN mkdir -p /tmp/out && \
-    --mount=from=final,src=/,target=/chunkah,ro \
+
+# AJUSTE EXCLUSIVO DO BUILDKIT: O --mount fica anexado diretamente à instrução RUN
+RUN --mount=from=final,src=/,target=/chunkah,ro \
+    mkdir -p /tmp/out && \
     chunkah build --max-layers 128 \
     --label ostree.commit- \
     --label ostree.final-diffid- \
