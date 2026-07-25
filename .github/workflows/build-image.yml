@@ -83,6 +83,7 @@ jobs:
         run: |
           VERSION="${{ steps.meta.outputs.version }}"
           SHORT_SHA="${{ steps.meta.outputs.short_sha }}"
+          DATE="${{ steps.meta.outputs.date }}"
           BASE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
           CREDS="${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}"
           PRIMARY="${{ steps.meta.outputs.primary }}"
@@ -93,23 +94,23 @@ jobs:
             skopeo copy --src-creds "${CREDS}" "docker://${PRIMARY}" "oci-archive:new.oci-archive"
 
             echo "→ Gerando oci-delta com privilegios de root..."
-            if sudo oci-delta create old.oci-archive new.oci-archive delta-dir; then
+            if sudo oci-delta create old.oci-archive new.oci-archive delta.oci-archive; then
               echo "→ Enviando manifesto OCI Delta para o GHCR..."
               skopeo copy \
                 --dest-creds "${CREDS}" \
-                "oci:delta-dir" \
+                "oci-archive:delta.oci-archive" \
                 "docker://${BASE}:delta-latest"
 
               skopeo copy \
                 --dest-creds "${CREDS}" \
-                "oci:delta-dir" \
+                "oci-archive:delta.oci-archive" \
                 "docker://${BASE}:${VERSION}-${DATE}-delta" || true
             else
               echo "Aviso: Falha ao gerar oci-delta."
             fi
 
-            # Limpeza dos archives e do diretorio delta
-            sudo rm -rf old.oci-archive new.oci-archive delta-dir
+            # Limpeza dos archives pesados
+            sudo rm -f old.oci-archive new.oci-archive delta.oci-archive
           else
             echo "Aviso: Imagem :latest antiga não encontrada no GHCR. Pulando geração de delta neste primeiro build."
           fi
