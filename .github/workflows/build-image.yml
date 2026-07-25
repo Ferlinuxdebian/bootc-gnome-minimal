@@ -45,6 +45,8 @@ jobs:
           export GO111MODULE=on
           export GOEXPERIMENT=nodwarf5
           go install github.com/containers/oci-delta@latest
+          # Copia o binario para o PATH do sistema para o sudo conseguir encontrar
+          sudo cp $(which oci-delta) /usr/local/bin/
 
       - name: Gerar metadados do build
         id: meta
@@ -90,15 +92,11 @@ jobs:
             echo "→ Exportando nova imagem compilada para OCI Archive..."
             skopeo copy --src-creds "${CREDS}" "docker://${PRIMARY}" "oci-archive:new.oci-archive"
 
-            echo "→ Gerando oci-delta..."
-            # Evita a chamada de unshare(...) no runner sem privilegios do GitHub Actions
-            export _CONTAINERS_USERNS_CONFIGURED=done
-            export STORAGE_DRIVER=vfs
-
-            oci-delta create old.oci-archive new.oci-archive update.oci-delta || echo "Aviso: Falha ao gerar oci-delta."
+            echo "→ Gerando oci-delta com privilegios de root..."
+            sudo oci-delta create old.oci-archive new.oci-archive update.oci-delta || echo "Aviso: Falha ao gerar oci-delta."
 
             # Limpeza dos archives pesados
-            rm -f old.oci-archive new.oci-archive update.oci-delta
+            sudo rm -f old.oci-archive new.oci-archive update.oci-delta
           else
             echo "Aviso: Imagem :latest antiga não encontrada no GHCR. Pulando geração de delta neste primeiro build."
           fi
