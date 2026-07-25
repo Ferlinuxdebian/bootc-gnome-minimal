@@ -93,16 +93,29 @@ jobs:
             skopeo copy --src-creds "${CREDS}" "docker://${PRIMARY}" "oci-archive:new.oci-archive"
 
             echo "→ Gerando oci-delta com privilegios de root..."
-            sudo oci-delta create old.oci-archive new.oci-archive update.oci-delta || echo "Aviso: Falha ao gerar oci-delta."
+            if sudo oci-delta create old.oci-archive new.oci-archive delta-dir; then
+              echo "→ Enviando manifesto OCI Delta para o GHCR..."
+              skopeo copy \
+                --dest-creds "${CREDS}" \
+                "oci:delta-dir" \
+                "docker://${BASE}:delta-latest"
 
-            # Limpeza dos archives pesados
-            sudo rm -f old.oci-archive new.oci-archive update.oci-delta
+              skopeo copy \
+                --dest-creds "${CREDS}" \
+                "oci:delta-dir" \
+                "docker://${BASE}:${VERSION}-${DATE}-delta" || true
+            else
+              echo "Aviso: Falha ao gerar oci-delta."
+            fi
+
+            # Limpeza dos archives e do diretorio delta
+            sudo rm -rf old.oci-archive new.oci-archive delta-dir
           else
             echo "Aviso: Imagem :latest antiga não encontrada no GHCR. Pulando geração de delta neste primeiro build."
           fi
 
           for TAG in "${VERSION}-latest" "latest" "main" "sha-${SHORT_SHA}"; do
-            echo "→ Copiando manifesto para :${TAG}"
+            echo "→ Copiando manifesto principal para :${TAG}"
             skopeo copy \
               --src-creds  "${CREDS}" \
               --dest-creds "${CREDS}" \
