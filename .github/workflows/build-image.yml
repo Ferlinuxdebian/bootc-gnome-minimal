@@ -91,6 +91,10 @@ jobs:
             skopeo copy --src-creds "${CREDS}" "docker://${PRIMARY}" "oci-archive:new.oci-archive"
 
             echo "→ Gerando oci-delta..."
+            # Evita a chamada de unshare(...) no runner sem privilegios do GitHub Actions
+            export _CONTAINERS_USERNS_CONFIGURED=done
+            export STORAGE_DRIVER=vfs
+
             oci-delta create old.oci-archive new.oci-archive update.oci-delta || echo "Aviso: Falha ao gerar oci-delta."
 
             # Limpeza dos archives pesados
