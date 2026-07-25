@@ -1,10 +1,9 @@
 # Primeiro estágio: Construção dos módulos NVIDIA (akmods)
 FROM quay.io/fedora/fedora-bootc:44 AS builder
-RUN dnf5 upgrade -y 'kernel*' --refresh && \
-    dnf5 -y install kernel-devel wget --refresh && \
-    KERNEL_VERSION="$(rpm -q kernel-core --queryformat '%{VERSION}-%{RELEASE}.%{ARCH}')" && \
+RUN KERNEL_VERSION="$(rpm -q kernel-core --queryformat '%{VERSION}-%{RELEASE}.%{ARCH}')" && \
+    dnf5 -y install "kernel-devel-${KERNEL_VERSION}" wget && \
     wget -O /etc/yum.repos.d/fedora-nvidia-580.repo https://negativo17.org/repos/fedora-nvidia-580.repo && \
-    dnf5 install -y nvidia-driver nvidia-driver-cuda --refresh && \
+    dnf5 install -y nvidia-driver nvidia-driver-cuda && \
     akmods --force --kernels "$KERNEL_VERSION"
 
 # Segundo estágio: Configuração do sistema e imagem final
@@ -14,11 +13,10 @@ LABEL containers.bootc="1"
 
 # 1. Ajuste do sistema de arquivos base e rebuild do Initramfs (Pouca variação)
 RUN mkdir -vp /var/roothome /data /var/home && \
-    dnf5 -y upgrade --refresh && \
-    dnf5 -y install kernel-modules-extra wget --refresh && \
-    printf 'omit_dracutmodules+=" nfs "\nomit_drivers+=" nfs nfsv3 nfsv4 nfs_acl nfs_common sunrpc rxrpc rpcrdma auth_rpcgss rpcsec_gss_krb5 "\n' | tee /etc/dracut.conf.d/no-nfs.conf && \
     kver="$(rpm -q kernel-core --queryformat '%{VERSION}-%{RELEASE}.%{ARCH}')" && \
-    dracut -f /usr/lib/modules/${kver}/initramfs.img ${kver} && \
+    dnf5 -y install "kernel-modules-extra-${kver}" wget && \
+    printf 'omit_dracutmodules+=" nfs "\nomit_drivers+=" nfs nfsv3 nfsv4 nfs_acl nfs_common sunrpc rxrpc rpcrdma auth_rpcgss rpcsec_gss_krb5 "\n' | tee /etc/dracut.conf.d/no-nfs.conf && \
+    dracut -f --reproducible --noghostofm /usr/lib/modules/${kver}/initramfs.img ${kver} && \
     dnf5 clean all
 
 # 2. Instalação dos módulos e drivers NVIDIA compilados (Camada pesada)
