@@ -1,7 +1,7 @@
 name: Build e Push da Imagem Bootc
 on:
   schedule:
-  - cron: '0 5 * * *'
+    - cron: '0 5 * * *'
   push:
     branches:
       - main
@@ -29,6 +29,17 @@ jobs:
         run: |
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
             "/usr/local/share/boost" "$AGENT_TOOLSDIRECTORY"
+
+      - name: Configurar Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Compilar e instalar oci-delta
+        run: |
+          export GO111MODULE=on
+          export GOEXPERIMENT=nodwarf5
+          go install github.com/containers/oci-delta@latest
 
       - name: Gerar metadados do build
         id: meta
@@ -61,19 +72,34 @@ jobs:
       - name: Push da tag principal
         run: buildah push "${{ steps.meta.outputs.primary }}"
 
-      - name: Aplicar tags adicionais via skopeo
+      - name: Processar oci-delta e aplicar tags adicionais via skopeo
         run: |
           VERSION="${{ steps.meta.outputs.version }}"
           SHORT_SHA="${{ steps.meta.outputs.short_sha }}"
           BASE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
           CREDS="${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}"
+          PRIMARY="${{ steps.meta.outputs.primary }}"
+
+          echo "→ Baixando imagem antiga (:latest) e exportando para OCI Archive..."
+          if skopeo copy --src-creds "${CREDS}" "docker://${BASE}:latest" "oci-archive:old.oci-archive"; then
+            echo "→ Exportando nova imagem compilada para OCI Archive..."
+            skopeo copy --src-creds "${CREDS}" "docker://${PRIMARY}" "oci-archive:new.oci-archive"
+
+            echo "→ Gerando oci-delta..."
+            oci-delta create old.oci-archive new.oci-archive update.oci-delta || echo "Aviso: Falha ao gerar oci-delta."
+            
+            # Limpeza dos archives pesados
+            rm -f old.oci-archive new.oci-archive update.oci-delta
+          else
+            echo "Aviso: Imagem :latest antiga não encontrada no GHCR. Pulando geração de delta neste primeiro build."
+          fi
 
           for TAG in "${VERSION}-latest" "latest" "main" "sha-${SHORT_SHA}"; do
             echo "→ Copiando manifesto para :${TAG}"
             skopeo copy \
               --src-creds  "${CREDS}" \
               --dest-creds "${CREDS}" \
-              "docker://${{ steps.meta.outputs.primary }}" \
+              "docker://${PRIMARY}" \
               "docker://${BASE}:${TAG}"
           done
 
