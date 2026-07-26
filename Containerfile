@@ -71,8 +71,7 @@ RUN rm -rf /opt && mkdir -vp /var/opt && ln -vs /var/opt /opt && \
     setfattr -n user.component -v "custom-config" /usr/lib/systemd/zram-generator.conf && \
     setfattr -n user.component -v "bootc-kargs" /usr/lib/bootc/kargs.d/10-nvidia-args.toml && \
     setfattr -n user.component -v "custom-services" /usr/lib/systemd/system/post-install.service && \
-    # Removendo attr ao final para manter a imagem limpa
-    dnf5 remove -y attr && \
+    # Limpa dados de cache da imagem
     dnf5 clean all && \
     rm -rf /tmp/sysconfig \
            /var/cache/* \
