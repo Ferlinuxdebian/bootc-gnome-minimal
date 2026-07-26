@@ -20,12 +20,11 @@ RUN mkdir -vp /var/roothome /data /var/home && \
     dnf5 clean all && \
     rm -rf /var/cache/* /var/log/* /tmp/* /var/tmp/*
 
-# 2. Instalação dos módulos e drivers NVIDIA compilados
-# Copiamos o repositório do builder para evitar uso do wget na imagem final
+# 2. Instalação dos módulos e drivers NVIDIA compilados + utilitário attr (para setfattr)
 COPY --from=builder /etc/yum.repos.d/fedora-nvidia-580.repo /etc/yum.repos.d/fedora-nvidia-580.repo
 COPY --from=builder /var/cache/akmods/nvidia/kmod-nvidia*.rpm /tmp/nvidia-modules/
-
 RUN dnf5 -y --nodocs install \
+    attr \
     nvidia-kmod-common \
     nvidia-driver-cuda \
     /tmp/nvidia-modules/kmod-nvidia-*.rpm && \
@@ -47,9 +46,8 @@ RUN dnf5 install -y --nodocs \
     dnf5 clean all && \
     rm -rf /var/cache/* /var/log/* /tmp/* /var/tmp/*
 
-# 5. Configurações do sistema, scripts e links simbólicos
+# 5. Configurações do sistema, scripts, links simbólicos e atribuição de user.component
 COPY 10-nvidia-args.toml locale.conf post-install.sh post-install.service vconsole.conf zram-generator.conf /tmp/sysconfig/
-
 RUN rm -rf /opt && mkdir -vp /var/opt && ln -vs /var/opt /opt && \
     mkdir -vp /var/usrlocal && mv -v /usr/local/* /var/usrlocal/ 2>/dev/null || true && \
     rm -rf /usr/local && ln -vs /var/usrlocal /usr/local && \
@@ -66,8 +64,18 @@ RUN rm -rf /opt && mkdir -vp /var/opt && ln -vs /var/opt /opt && \
     systemctl mask akmods-keygen@akmods-keygen.service && \
     systemctl enable libvirtd.service && \
     systemctl enable spice-vdagentd.service && \
-    rm -rf /tmp/sysconfig && \
-    rm -rf /var/cache/* \
+    # --- Atribuição de user.component para rechunking granular ---
+    setfattr -n user.component -v "custom-scripts" /usr/bin/post-install.sh && \
+    setfattr -n user.component -v "custom-config" /etc/vconsole.conf && \
+    setfattr -n user.component -v "custom-config" /etc/locale.conf && \
+    setfattr -n user.component -v "custom-config" /usr/lib/systemd/zram-generator.conf && \
+    setfattr -n user.component -v "bootc-kargs" /usr/lib/bootc/kargs.d/10-nvidia-args.toml && \
+    setfattr -n user.component -v "custom-services" /usr/lib/systemd/system/post-install.service && \
+    # Removendo attr ao final para manter a imagem limpa
+    dnf5 remove -y attr && \
+    dnf5 clean all && \
+    rm -rf /tmp/sysconfig \
+           /var/cache/* \
            /var/lib/dnf/* \
            /var/log/* \
            /var/tmp/* \
