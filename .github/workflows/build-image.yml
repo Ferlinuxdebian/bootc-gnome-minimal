@@ -58,14 +58,13 @@ jobs:
             -v "$(pwd):/run/src" \
             .
 
-      - name: Rechunk e pre-computar SELinux via bootc-base-imagectl
+      - name: Rechunk via bootc-base-imagectl (fedora-bootc:44)
         run: |
           sudo podman run --rm --privileged \
-            -v /var/lib/containers/storage:/var/lib/containers/storage \
-            -v /run/containers/storage:/run/containers/storage \
-            localhost/bootc-raw:latest \
+            -v /var/lib/containers:/var/lib/containers \
+            quay.io/fedora/fedora-bootc:44 \
             /usr/libexec/bootc-base-imagectl rechunk \
-            containers-storage:localhost/bootc-raw:latest \
+            localhost/bootc-raw:latest \
             "${{ steps.meta.outputs.primary }}"
 
       - name: Push da tag principal otimizada
