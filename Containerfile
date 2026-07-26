@@ -1,34 +1,38 @@
 # Primeiro estágio: Construção dos módulos NVIDIA (akmods)
 FROM quay.io/fedora/fedora-bootc:44 AS builder
-
 RUN KERNEL_VERSION="$(rpm -q kernel-core --queryformat '%{VERSION}-%{RELEASE}.%{ARCH}')" && \
     dnf5 -y --nodocs install "kernel-devel-${KERNEL_VERSION}" wget && \
     wget -O /etc/yum.repos.d/fedora-nvidia-580.repo https://negativo17.org/repos/fedora-nvidia-580.repo && \
     dnf5 install -y --nodocs nvidia-driver nvidia-driver-cuda && \
     akmods --force --kernels "$KERNEL_VERSION"
 
-
 # Segundo estágio: Configuração do sistema e imagem final
 FROM quay.io/fedora/fedora-bootc:44 AS final
-
-# 1. Ajuste do sistema de arquivos base e rebuild do Initramfs
-RUN mkdir -vp /var/roothome /data /var/home && \
+# 1. Ajuste do sistema de arquivos base, instação do attr e rebuild do Initramfs
+RUN dnf5 -y --nodocs install attr && \
+    mkdir -vp /var/roothome /data /var/home && \
     kver="$(rpm -q kernel-core --queryformat '%{VERSION}-%{RELEASE}.%{ARCH}')" && \
     dnf5 -y --nodocs install "kernel-modules-extra-${kver}" && \
     printf 'omit_dracutmodules+=" nfs "\nomit_drivers+=" nfs nfsv3 nfsv4 nfs_acl nfs_common sunrpc rxrpc rpcrdma auth_rpcgss rpcsec_gss_krb5 "\n' | tee /etc/dracut.conf.d/no-nfs.conf && \
     dracut -f --reproducible "/usr/lib/modules/${kver}/initramfs.img" "${kver}" && \
+    # Isolar o initramfs gerado em uma camada dedicada
+    setfattr -n user.component -v "kernel-initramfs" "/usr/lib/modules/${kver}/initramfs.img" && \
     dnf5 clean all && \
     rm -rf /var/cache/* /var/log/* /tmp/* /var/tmp/*
 
-# 2. Instalação dos módulos e drivers NVIDIA compilados + utilitário attr (para setfattr)
+# 2. Instalação dos módulos e drivers NVIDIA compilados
 COPY --from=builder /etc/yum.repos.d/fedora-nvidia-580.repo /etc/yum.repos.d/fedora-nvidia-580.repo
 COPY --from=builder /var/cache/akmods/nvidia/kmod-nvidia*.rpm /tmp/nvidia-modules/
 RUN dnf5 -y --nodocs install \
-    attr \
     nvidia-kmod-common \
     nvidia-driver-cuda \
     /tmp/nvidia-modules/kmod-nvidia-*.rpm && \
     rm -rf /tmp/nvidia-modules && \
+    # Isolamento dos módulos compilados da NVIDIA
+    kver="$(rpm -q kernel-core --queryformat '%{VERSION}-%{RELEASE}.%{ARCH}')" && \
+    if [ -d "/usr/lib/modules/${kver}/extra" ]; then \
+        setfattr -n user.component -v "nvidia-kmod" "/usr/lib/modules/${kver}/extra"; \
+    fi && \
     dnf5 clean all && \
     rm -rf /var/cache/* /var/log/* /tmp/* /var/tmp/*
 
@@ -64,15 +68,13 @@ RUN rm -rf /opt && mkdir -vp /var/opt && ln -vs /var/opt /opt && \
     systemctl mask akmods-keygen@akmods-keygen.service && \
     systemctl enable libvirtd.service && \
     systemctl enable spice-vdagentd.service && \
-    # --- Atribuição de user.component para rechunking granular ---
+    # Atribuição de rótulos user.component para arquivos modificáveis
     setfattr -n user.component -v "custom-scripts" /usr/bin/post-install.sh && \
     setfattr -n user.component -v "custom-config" /etc/vconsole.conf && \
     setfattr -n user.component -v "custom-config" /etc/locale.conf && \
     setfattr -n user.component -v "custom-config" /usr/lib/systemd/zram-generator.conf && \
     setfattr -n user.component -v "bootc-kargs" /usr/lib/bootc/kargs.d/10-nvidia-args.toml && \
     setfattr -n user.component -v "custom-services" /usr/lib/systemd/system/post-install.service && \
-    # Limpa dados de cache da imagem
-    dnf5 clean all && \
     rm -rf /tmp/sysconfig \
            /var/cache/* \
            /var/lib/dnf/* \
