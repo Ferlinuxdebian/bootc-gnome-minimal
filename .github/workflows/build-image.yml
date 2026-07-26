@@ -53,7 +53,7 @@ jobs:
           sudo podman build \
             --skip-unused-stages=false \
             --security-opt label=disable \
-            -t "local/bootc-raw:latest" \
+            -t "localhost/bootc-raw:latest" \
             -f Containerfile \
             -v "$(pwd):/run/src" \
             .
@@ -62,9 +62,10 @@ jobs:
         run: |
           sudo podman run --rm --privileged \
             -v /var/lib/containers/storage:/var/lib/containers/storage \
-            local/bootc-raw:latest \
+            -v /run/containers/storage:/run/containers/storage \
+            localhost/bootc-raw:latest \
             /usr/libexec/bootc-base-imagectl rechunk \
-            containers-storage:local/bootc-raw:latest \
+            containers-storage:localhost/bootc-raw:latest \
             "${{ steps.meta.outputs.primary }}"
 
       - name: Push da tag principal otimizada
