@@ -65,7 +65,7 @@ jobs:
             local/bootc-raw:latest \
             /usr/libexec/bootc-base-imagectl rechunk \
             containers-storage:local/bootc-raw:latest \
-            containers-storage:${{ steps.meta.outputs.primary }}
+            "${{ steps.meta.outputs.primary }}"
 
       - name: Push da tag principal otimizada
         run: sudo podman push "${{ steps.meta.outputs.primary }}"
