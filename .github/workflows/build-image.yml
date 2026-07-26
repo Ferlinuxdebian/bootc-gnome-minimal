@@ -45,12 +45,12 @@ jobs:
 
       - name: Login no GHCR
         run: |
-          echo "${{ secrets.GITHUB_TOKEN }}" | buildah login \
+          echo "${{ secrets.GITHUB_TOKEN }}" | sudo podman login \
             -u "${{ github.actor }}" --password-stdin "${{ env.REGISTRY }}"
 
-      - name: Build da imagem inicial
+      - name: Build da imagem inicial (como root)
         run: |
-          buildah build \
+          sudo podman build \
             --skip-unused-stages=false \
             --security-opt label=disable \
             -t "local/bootc-raw:latest" \
@@ -60,11 +60,7 @@ jobs:
 
       - name: Rechunk e pre-computar SELinux via bootc-base-imagectl
         run: |
-          # Sincroniza a imagem bruta do buildah para o storage do podman
-          podman pull containers-storage:local/bootc-raw:latest
-
-          # Executa o rechunking usando o utilitario da propria imagem gerada
-          podman run --rm --privileged \
+          sudo podman run --rm --privileged \
             -v /var/lib/containers/storage:/var/lib/containers/storage \
             local/bootc-raw:latest \
             /usr/libexec/bootc-base-imagectl rechunk \
@@ -72,7 +68,7 @@ jobs:
             containers-storage:${{ steps.meta.outputs.primary }}
 
       - name: Push da tag principal otimizada
-        run: buildah push "${{ steps.meta.outputs.primary }}"
+        run: sudo podman push "${{ steps.meta.outputs.primary }}"
 
       - name: Aplicar tags adicionais via skopeo
         run: |
@@ -83,7 +79,7 @@ jobs:
 
           for TAG in "${VERSION}-latest" "latest" "main" "sha-${SHORT_SHA}"; do
             echo "→ Copiando manifesto para :${TAG}"
-            skopeo copy \
+            sudo skopeo copy \
               --src-creds  "${CREDS}" \
               --dest-creds "${CREDS}" \
               "docker://${{ steps.meta.outputs.primary }}" \
