@@ -8,8 +8,6 @@ RUN KERNEL_VERSION="$(rpm -q kernel-core --queryformat '%{VERSION}-%{RELEASE}.%{
 
 # Segundo estágio: Configuração do sistema e imagem final
 FROM quay.io/fedora/fedora-bootc:44 AS final
-LABEL ostree.bootable="true"
-LABEL containers.bootc="1"
 
 # 1. Ajuste do sistema de arquivos base e rebuild do Initramfs (Pouca variação)
 RUN mkdir -vp /var/roothome /data /var/home && \
@@ -68,17 +66,3 @@ RUN rm -rvf /opt && mkdir -vp /var/opt && ln -vs /var/opt /opt && \
 
 # 6. Validação do bootc
 RUN bootc container lint
-
-# Terceiro estágio: Otimização e minimização de camadas OCI via Chunkah
-FROM quay.io/coreos/chunkah AS chunkah
-ARG CHUNKAH_CONFIG_STR
-RUN --mount=from=final,src=/,target=/chunkah,ro \
-    --mount=type=bind,target=/run/src,rw \
-    chunkah build --max-layers 128 \
-    --label ostree.commit- \
-    --label ostree.final-diffid- \
-    --output oci:/run/src/out
-
-FROM oci:out
-LABEL ostree.bootable="true"
-LABEL containers.bootc="1"

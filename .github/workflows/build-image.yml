@@ -48,17 +48,30 @@ jobs:
           echo "${{ secrets.GITHUB_TOKEN }}" | buildah login \
             -u "${{ github.actor }}" --password-stdin "${{ env.REGISTRY }}"
 
-      - name: Build da imagem
+      - name: Build da imagem inicial
         run: |
           buildah build \
             --skip-unused-stages=false \
             --security-opt label=disable \
-            -t "${{ steps.meta.outputs.primary }}" \
+            -t "local/bootc-raw:latest" \
             -f Containerfile \
             -v "$(pwd):/run/src" \
             .
 
-      - name: Push da tag principal
+      - name: Rechunk e pre-computar SELinux via bootc-base-imagectl
+        run: |
+          # Sincroniza a imagem bruta do buildah para o storage do podman
+          podman pull containers-storage:local/bootc-raw:latest
+
+          # Executa o rechunking usando o utilitario da propria imagem gerada
+          podman run --rm --privileged \
+            -v /var/lib/containers/storage:/var/lib/containers/storage \
+            local/bootc-raw:latest \
+            /usr/libexec/bootc-base-imagectl rechunk \
+            containers-storage:local/bootc-raw:latest \
+            containers-storage:${{ steps.meta.outputs.primary }}
+
+      - name: Push da tag principal otimizada
         run: buildah push "${{ steps.meta.outputs.primary }}"
 
       - name: Aplicar tags adicionais via skopeo
