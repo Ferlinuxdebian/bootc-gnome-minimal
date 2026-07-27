@@ -8,28 +8,28 @@ RUN KERNEL_VERSION="$(rpm -q kernel-core --queryformat '%{VERSION}-%{RELEASE}.%{
 
 # Segundo estágio: Configuração do sistema e imagem final
 FROM quay.io/fedora/fedora-bootc:44 AS final
-
-# 1. Ajuste do sistema de arquivos base e rebuild do Initramfs (Pouca variação)
+# 1. Instalação do kernel e módulos extras e crioação de diretórios de trabalho
 RUN mkdir -vp /var/roothome /data /var/home && \
     kver="$(rpm -q kernel-core --queryformat '%{VERSION}-%{RELEASE}.%{ARCH}')" && \
-    dnf5 -y install "kernel-modules-extra-${kver}" wget && \
-    printf 'omit_dracutmodules+=" nfs "\nomit_drivers+=" nfs nfsv3 nfsv4 nfs_acl nfs_common sunrpc rxrpc rpcrdma auth_rpcgss rpcsec_gss_krb5 "\n' | tee /etc/dracut.conf.d/no-nfs.conf && \
-    dracut -f --reproducible /usr/lib/modules/${kver}/initramfs.img ${kver} && \
-    dnf5 clean all
+    dnf5 -y install "kernel-modules-extra-${kver}" && \
+    dnf5 clean all && \
+    rm -rfv /var/cache/* /var/lib/dnf/* /var/log/* /tmp/* /var/tmp/*
 
-# 2. Instalação dos módulos e drivers NVIDIA compilados (Camada pesada)
+# 2. Instalação dos módulos e drivers NVIDIA compilados
+COPY --from=builder /etc/yum.repos.d/fedora-nvidia-580.repo /etc/yum.repos.d/
 COPY --from=builder /var/cache/akmods/nvidia/kmod-nvidia*.rpm ./
-RUN wget -O /etc/yum.repos.d/fedora-nvidia-580.repo https://negativo17.org/repos/fedora-nvidia-580.repo && \
-    dnf5 download nvidia-kmod-common nvidia-driver-cuda && \
+RUN dnf5 download nvidia-kmod-common nvidia-driver-cuda && \
     rpm -vi --nodeps nvidia-kmod-common*.rpm && \
     rpm -vi --nodeps nvidia-driver-cuda*.rpm && \
     dnf5 -y install ./kmod-nvidia-*.rpm && \
     rm -rvf kmod-nvidia-*.rpm nvidia-kmod-common*.rpm nvidia-driver-cuda*.rpm && \
-    dnf5 clean all
+    dnf5 clean all && \
+    rm -rfv /var/cache/* /var/lib/dnf/* /var/log/* /tmp/* /var/tmp/*
 
 # 3. Pacotes base do ambiente gráfico GNOME Minimalista
 RUN dnf5 install gnome-shell --setopt=install_weak_deps=False -y && \
-    dnf5 clean all
+    dnf5 clean all && \
+    rm -rfv /var/cache/* /var/lib/dnf/* /var/log/* /tmp/* /var/tmp/*
 
 # 4. Listas de pacotes personalizadas
 # Copiadas separadamente para evitar a invalidação do cache do GNOME e NVIDIA
@@ -37,7 +37,8 @@ COPY pacotes_necessarios pacotes_desktop ./
 RUN grep -v '^#' pacotes_necessarios | tr '\n' ' ' | xargs dnf5 install -y && \
     grep -v '^#' pacotes_desktop | tr '\n' ' ' | xargs dnf5 install -y && \
     rm -fv pacotes_necessarios pacotes_desktop && \
-    dnf5 clean all
+    dnf5 clean all && \
+    rm -rfv /var/cache/* /var/lib/dnf/* /var/log/* /tmp/* /var/tmp/*
 
 # 5. Configurações do sistema, scripts e links simbólicos (Arquivos com modificações frequentes)
 # Mantidos por último para que edições nesses arquivos executem em instantes
