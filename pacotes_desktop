@@ -1,6 +1,7 @@
 # Pacotes de ambiente de desktop
 glycin-thumbnailer
 gnome-epub-thumbnailer
+evince-thumbnailer
 libnma
 ibus-typing-booster
 ibus-gtk4
