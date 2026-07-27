@@ -33,10 +33,10 @@ RUN dnf5 install gnome-shell --setopt=install_weak_deps=False -y && \
 
 # 4. Listas de pacotes personalizadas
 # Copiadas separadamente para evitar a invalidação do cache do GNOME e NVIDIA
-COPY pacotes_necessarios pacotes_desktop ./
-RUN grep -v '^#' pacotes_necessarios | tr '\n' ' ' | xargs dnf5 install -y && \
-    grep -v '^#' pacotes_desktop | tr '\n' ' ' | xargs dnf5 install -y && \
-    rm -fv pacotes_necessarios pacotes_desktop && \
+COPY pacotes_necessarios pacotes_desktop /tmp/
+RUN grep -v '^#' /tmp/pacotes_necessarios | tr '\n' ' ' | xargs dnf5 install -y && \
+    grep -v '^#' /tmp/pacotes_desktop | tr '\n' ' ' | xargs dnf5 install -y && \
+    rm -fv /tmp/pacotes_necessarios /tmp/pacotes_desktop && \
     dnf5 clean all && \
     rm -rfv /var/cache/* /var/lib/dnf/* /var/log/* /tmp/* /var/tmp/*
 
