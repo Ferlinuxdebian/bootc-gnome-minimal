@@ -13,7 +13,7 @@ FROM quay.io/fedora/fedora-bootc:44 AS final
 RUN mkdir -vp /var/roothome /data /var/home && \
     rm -rf /opt && mkdir -vp /var/opt && ln -vs /var/opt /opt && \
     mkdir -vp /var/usrlocal && \
-    rm -rf /usr/local && ln -vs /var/usrlocal /usr/local && \
+    rm -rf /usr/local && ln -vs /var/usrlocal /usr/local
 
 # 1. Instalação dos módulos e drivers NVIDIA compilados (Via dnf download + rpm em /tmp)
 COPY --from=builder /etc/yum.repos.d/fedora-nvidia-580.repo /etc/yum.repos.d/
