@@ -103,5 +103,5 @@ jobs:
           skopeo copy \
             --src-creds "${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}" \
             --dest-creds "${{ secrets.QUAY_USERNAME }}:${{ secrets.QUAY_ROBOT_TOKEN }}" \
-            docker://ghcr.io/${{ github.repository }}:latest \
+            docker://ghcr.io/ferlinuxdebian/bootc-gnome-minimal:latest \
             docker://quay.io/ferlinuxdebian/bootc-gnome-minimal:latest
