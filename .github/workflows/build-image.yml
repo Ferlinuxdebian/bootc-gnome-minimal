@@ -97,3 +97,11 @@ jobs:
             📦 Base: ${{ steps.meta.outputs.version }}
             🏷️ Tag: ${{ steps.meta.outputs.version }}-${{ steps.meta.outputs.date }}
             🔗 ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+      - name: Copiar imagem do GHCR para o Quay.io via Skopeo
+        run: |
+          skopeo copy \
+            --src-creds "${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}" \
+            --dest-creds "${{ secrets.QUAY_USERNAME }}:${{ secrets.QUAY_ROBOT_TOKEN }}" \
+            docker://ghcr.io/${{ github.repository }}:latest \
+            docker://quay.io/ferlinuxdebian/bootc-gnome-minimal:latest
