@@ -97,20 +97,3 @@ jobs:
             📦 Base: ${{ steps.meta.outputs.version }}
             🏷️ Tag: ${{ steps.meta.outputs.version }}-${{ steps.meta.outputs.date }}
             🔗 ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-
-      - name: Autenticar e Copiar Imagem entre Registros
-        run: |
-          # Converte o nome do usuário para minúsculas
-          GH_USER=$(echo "${{ github.actor }}" | tr '[:upper:]' '[:lower:]')
-
-          # 1. Login no GHCR como root
-          echo "${{ secrets.GITHUB_TOKEN }}" | sudo podman login ghcr.io -u "$GH_USER" --password-stdin
-
-          # 2. Login no Quay.io como root
-          echo "${{ secrets.QUAY_ROBOT_TOKEN }}" | sudo podman login quay.io -u "${{ secrets.QUAY_USERNAME }}" --password-stdin
-
-          # 3. Copia a imagem utilizando o skopeo apontando para a sessão logada do sudo
-          sudo skopeo copy \
-            --authfile /root/.config/containers/auth.json \
-            docker://ghcr.io/ferlinuxdebian/bootc-gnome-minimal:latest \
-            docker://quay.io/ferlinuxdebian/bootc-gnome-minimal:latest
