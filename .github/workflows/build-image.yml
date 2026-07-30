@@ -98,22 +98,18 @@ jobs:
             🏷️ Tag: ${{ steps.meta.outputs.version }}-${{ steps.meta.outputs.date }}
             🔗 ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
-      - name: Logar no GHCR
-        uses: redhat-actions/podman-login@v1
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Logar no Quay.io
-        uses: redhat-actions/podman-login@v1
-        with:
-          registry: quay.io
-          username: ${{ secrets.QUAY_USERNAME }}
-          password: ${{ secrets.QUAY_ROBOT_TOKEN }}
-
-      - name: Copiar Imagem entre Registros
+      - name: Autenticar e Copiar Imagem entre Registros
         run: |
-          podman image copy \
+          # Converte o nome do usuário para minúsculas
+          GH_USER=$(echo "${{ github.actor }}" | tr '[:upper:]' '[:lower:]')
+
+          # 1. Login no GHCR como root
+          echo "${{ secrets.GITHUB_TOKEN }}" | sudo podman login ghcr.io -u "$GH_USER" --password-stdin
+
+          # 2. Login no Quay.io como root
+          echo "${{ secrets.QUAY_ROBOT_TOKEN }}" | sudo podman login quay.io -u "${{ secrets.QUAY_USERNAME }}" --password-stdin
+
+          # 3. Copia a imagem direto usando a sessão autenticada do sudo
+          sudo podman image copy \
             docker://ghcr.io/ferlinuxdebian/bootc-gnome-minimal:latest \
             docker://quay.io/ferlinuxdebian/bootc-gnome-minimal:latest
