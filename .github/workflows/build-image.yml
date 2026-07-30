@@ -98,12 +98,21 @@ jobs:
             🏷️ Tag: ${{ steps.meta.outputs.version }}-${{ steps.meta.outputs.date }}
             🔗 ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
-      - name: Autenticar nos Registros (GHCR e Quay.io)
-        run: |
-          echo "${{ secrets.GITHUB_TOKEN }}" | podman login ghcr.io -u "${{ github.actor }}" --password-stdin
-          echo "${{ secrets.QUAY_ROBOT_TOKEN }}" | podman login quay.io -u "${{ secrets.QUAY_USERNAME }}" --password-stdin
+      - name: Logar no GHCR
+        uses: redhat-actions/podman-login@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Copiar imagem do GHCR para o Quay.io via Podman
+      - name: Logar no Quay.io
+        uses: redhat-actions/podman-login@v1
+        with:
+          registry: quay.io
+          username: ${{ secrets.QUAY_USERNAME }}
+          password: ${{ secrets.QUAY_ROBOT_TOKEN }}
+
+      - name: Copiar Imagem entre Registros
         run: |
           podman image copy \
             docker://ghcr.io/ferlinuxdebian/bootc-gnome-minimal:latest \
