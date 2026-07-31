@@ -41,10 +41,12 @@ RUN grep -v '^#' /tmp/pacotes_necessarios | tr '\n' ' ' | xargs dnf5 install -y 
 
 # 5. Configurações do sistema, scripts e links simbólicos (Arquivos com modificações frequentes)
 # Mantidos por último para que edições nesses arquivos executem em instantes
-COPY 10-nvidia-args.toml locale.conf post-install.sh post-install.service vconsole.conf zram-generator.conf ./
+COPY 10-nvidia-args.toml locale.conf post-install.sh post-install.service vconsole.conf zram-generator.conf libvirt.conf ./
 RUN rm -rvf /opt && mkdir -vp /var/opt && ln -vs /var/opt /opt && \
     mkdir -vp /var/usrlocal && mv -v /usr/local/* /var/usrlocal/ && \
+    mkdir -vp /etc/sysusers.d/ && \
     rm -rvf /usr/local && ln -vs /var/usrlocal /usr/local && \
+    mv -v libvirt.conf /etc/sysusers.d/ && \
     mv -v zram-generator.conf /etc/systemd/ && \
     mv -v vconsole.conf /etc/vconsole.conf && \
     mv -v locale.conf /etc/locale.conf && \
