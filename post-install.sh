@@ -7,7 +7,7 @@ if [ -f "$MARKER" ]; then
     exit 0
 fi
 
-flatpak remote-delete fedora
+flatpak remote-delete fedora || true
 sleep 2
 flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
 sleep 2
