@@ -1,8 +1,8 @@
 # /etc/systemd/system/post-install.service
-# Instala vários apps flatpaks
+# Instala vários apps Flatpaks
+
 [Unit]
 Description=Bootstrap de Flatpaks iniciais
-ConditionPathExists=!/var/lib/flatpak/app
 After=network-online.target
 Wants=network-online.target
 
