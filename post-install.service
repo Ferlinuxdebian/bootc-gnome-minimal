@@ -1,0 +1,14 @@
+# /etc/systemd/system/post-install.service
+# Instala vários apps Flatpaks
+
+[Unit]
+Description=Bootstrap de Flatpaks iniciais
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/post-install.sh
+
+[Install]
+WantedBy=multi-user.target

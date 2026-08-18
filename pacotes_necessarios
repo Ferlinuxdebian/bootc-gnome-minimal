@@ -1,0 +1,46 @@
+# Essêncial (é bom manter esses pacotes e não alterar)
+@networkmanager-submodules
+@multimedia
+ffmpegthumbnailer
+xdg-utils
+compsize
+langpacks-core-pt_BR
+flatpak
+git
+tree
+langpacks-fonts-pt
+langpacks-pt_BR
+zram-generator
+spice-vdagent
+podman
+fpaste
+auditctl
+unzip
+zip
+usbutils
+sysfsutils
+
+# Pacotes não essênciais (pode ser alterado a gosto)
+@virtualization
+distrobox
+featherpad
+micro
+btrfs-assistant
+ps_mem
+copyq
+libva-nvidia-driver
+bash-color-prompt
+fira-code-fonts
+adw-gtk3-theme
+gum
+
+# Drivers da Nvidia (se você não tem nvidia, pode remover a versão é sempre a 580 negativo17)
+nvidia-gpu-firmware
+nvidia-modprobe
+opencl-filesystem
+libnvidia-cfg
+libnvidia-gpucomp
+libnvidia-ml
+nvidia-driver-cuda-libs
+nvidia-driver-libs
+nvidia-persistenced

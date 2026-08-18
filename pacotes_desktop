@@ -1,0 +1,12 @@
+# Pacotes de ambiente de desktop
+glycin-thumbnailer
+gnome-epub-thumbnailer
+evince-thumbnailer
+libnma
+ibus-typing-booster
+ibus-gtk4
+nautilus
+ptyxis
+
+# extensões do gnome
+gnome-shell-extension-appindicator

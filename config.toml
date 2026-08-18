@@ -1,0 +1,33 @@
+[customizations.installer.modules]
+enable = [
+  "org.fedoraproject.Anaconda.Modules.Storage",
+  "org.fedoraproject.Anaconda.Modules.Users",
+  "org.fedoraproject.Anaconda.Modules.Network",
+  "org.fedoraproject.Anaconda.Modules.Timezone"
+]
+
+[customizations.installer.kickstart]
+contents = """
+clearpart --all --initlabel
+zerombr
+
+# EFI
+part /boot/efi --fstype=efi --size=600 --fsoptions="umask=0077,shortname=winnt"
+
+# /boot
+part /boot --fstype=ext4 --size=2048
+
+# Partição Btrfs única
+part btrfs.01 --fstype=btrfs --grow
+
+# Volume Btrfs
+btrfs none --label=fedora btrfs.01
+
+# Subvolumes
+btrfs /     --subvol --name=root LABEL=fedora
+btrfs /var  --subvol --name=var  LABEL=fedora
+btrfs /home --subvol --name=home LABEL=fedora
+btrfs /var/lib/flatpak --subvol --name=flatpak LABEL=fedora
+btrfs /etc/libvirt/  --subvol --name=etc-libvirt LABEL=fedora
+btrfs /var/lib/libvirt/  --subvol --name=libvirt LABEL=fedora
+"""
