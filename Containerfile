@@ -30,6 +30,7 @@ RUN dnf5 install -y --setopt=tsflags=nodocs --setopt=install_weak_deps=False gno
     rm -rf /var/cache/* /var/lib/dnf/* /var/log/* /tmp/* /var/tmp/*
 
 # Instalando pacotes de desktop e pacotes essenciais para o funcionamento do sistema
+COPY pacotes_necessarios pacotes_desktop /tmp/
 RUN dnf5 install --setopt=tsflags=nodocs -y \
         $(grep -v -e '^#' -e '^$' /tmp/pacotes_necessarios) \
         $(grep -v -e '^#' -e '^$' /tmp/pacotes_desktop) && \
