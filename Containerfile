@@ -8,7 +8,7 @@ RUN KERNEL_VERSION="$(rpm -q kernel-core --queryformat '%{VERSION}-%{RELEASE}.%{
     akmods --force --kernels "$KERNEL_VERSION"
 
 # Segundo estágio: Configuração do sistema e imagem final
-FROM quay.io/fedora/fedora-bootc:44 AS final
+FROM quay.io/fedora/fedora-bootc:44
 
 # 1. Configuração de repostórios e instalação de Kernel Extras + NVIDIA
 COPY --from=builder /etc/yum.repos.d/fedora-nvidia-580.repo /etc/yum.repos.d/
@@ -24,16 +24,12 @@ RUN echo "max_parallel_downloads=10" >> /etc/dnf/dnf.conf && \
     dnf5 clean all && \
     rm -rf /var/cache/* /var/lib/dnf/* /var/log/* /tmp/* /var/tmp/*
 
-# Instalação do Gnome Shell minimalista
-RUN dnf5 install -y --setopt=tsflags=nodocs --setopt=install_weak_deps=False gnome-shell && \
-    dnf5 clean all && \
-    rm -rf /var/cache/* /var/lib/dnf/* /var/log/* /tmp/* /var/tmp/*
-
-# Instalando pacotes de desktop e pacotes essenciais para o funcionamento do sistema
+# 2. Instalação de pacotes essenciais e desktop
 COPY pacotes_necessarios pacotes_desktop /tmp/
-RUN dnf5 install --setopt=tsflags=nodocs -y \
-        $(grep -v -e '^#' -e '^$' /tmp/pacotes_necessarios) \
-        $(grep -v -e '^#' -e '^$' /tmp/pacotes_desktop) && \
+RUN dnf5 install -y --setopt=tsflags=nodocs --setopt=install_weak_deps=False gnome-shell && \
+    dnf5 install -y --setopt=tsflags=nodocs \
+        $(grep -v '^#' /tmp/pacotes_necessarios) \
+        $(grep -v '^#' /tmp/pacotes_desktop) && \
     dnf5 clean all && \
     rm -rf /var/cache/* /var/lib/dnf/* /var/log/* /tmp/* /var/tmp/*
 
