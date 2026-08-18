@@ -24,14 +24,18 @@ RUN echo "max_parallel_downloads=10" >> /etc/dnf/dnf.conf && \
     dnf5 clean all && \
     rm -rf /var/cache/* /var/lib/dnf/* /var/log/* /tmp/* /var/tmp/*
 
-# 2. Instalação de pacotes essenciais e desktop
-COPY pacotes_necessarios pacotes_desktop /tmp/
+# 1. Instalação mínima do GNOME Shell sem dependências fracas
 RUN dnf5 install -y --setopt=tsflags=nodocs --setopt=install_weak_deps=False gnome-shell && \
-    dnf5 install -y --setopt=tsflags=nodocs \
+    dnf5 clean all && \
+    rm -rf /var/cache/* /var/log/* /tmp/* /var/tmp/*
+
+# 2. Instalação dos pacotes essenciais e de desktop com dependências normais
+COPY pacotes_necessarios pacotes_desktop /tmp/
+RUN dnf5 install -y --setopt=tsflags=nodocs \
         $(grep -v '^#' /tmp/pacotes_necessarios) \
         $(grep -v '^#' /tmp/pacotes_desktop) && \
     dnf5 clean all && \
-    rm -rf /var/cache/* /var/lib/dnf/* /var/log/* /tmp/* /var/tmp/*
+    rm -rf /var/cache/* /var/log/* /tmp/* /var/tmp/*
 
 # Configurações, scripts, links do sistema e tratamento de /opt e /usr/local
 COPY 10-nvidia-args.toml locale.conf post-install.sh post-install.service vconsole.conf zram-generator.conf libvirt.conf nvidia-power.conf /tmp/sysconfig/
