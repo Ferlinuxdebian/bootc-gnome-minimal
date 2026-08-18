@@ -1,7 +1,6 @@
 # Primeiro estágio: Construção dos módulos NVIDIA (akmods)
 FROM quay.io/fedora/fedora-bootc:44 AS builder
 RUN KERNEL_VERSION="$(rpm -q kernel-core --queryformat '%{VERSION}-%{RELEASE}.%{ARCH}')" && \
-    echo "max_parallel_downloads=10" >> /etc/dnf/dnf.conf && \
     dnf5 -y install "kernel-devel-${KERNEL_VERSION}" wget && \
     wget -O /etc/yum.repos.d/fedora-nvidia-580.repo https://negativo17.org/repos/fedora-nvidia-580.repo && \
     dnf5 install -y nvidia-driver nvidia-driver-cuda && \
@@ -13,8 +12,7 @@ FROM quay.io/fedora/fedora-bootc:44
 # 1. Configuração de repostórios e instalação de Kernel Extras + NVIDIA
 COPY --from=builder /etc/yum.repos.d/fedora-nvidia-580.repo /etc/yum.repos.d/
 COPY --from=builder /var/cache/akmods/nvidia/kmod-nvidia*.rpm /tmp/nvidia/
-RUN echo "max_parallel_downloads=10" >> /etc/dnf/dnf.conf && \
-    kver="$(rpm -q kernel-core --queryformat '%{VERSION}-%{RELEASE}.%{ARCH}')" && \
+RUN kver="$(rpm -q kernel-core --queryformat '%{VERSION}-%{RELEASE}.%{ARCH}')" && \
     dnf5 -y install --setopt=tsflags=nodocs "kernel-modules-extra-${kver}" && \
     dnf5 download --destdir=/tmp/nvidia nvidia-kmod-common nvidia-driver-cuda && \
     rpm -vi --nodeps /tmp/nvidia/nvidia-kmod-common*.rpm && \
