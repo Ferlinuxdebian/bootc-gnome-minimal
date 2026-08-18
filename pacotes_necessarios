@@ -19,6 +19,7 @@ unzip
 zip
 usbutils
 sysfsutils
+libtasn1
 
 # Pacotes não essênciais (pode ser alterado a gosto)
 @virtualization
