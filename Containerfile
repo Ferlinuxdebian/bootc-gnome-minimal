@@ -29,8 +29,10 @@ RUN dnf5 install -y --setopt=tsflags=nodocs --setopt=install_weak_deps=False gno
 
 # 2. Instalação dos pacotes essenciais e de desktop com dependências normais
 COPY pacotes_necessarios pacotes_desktop /tmp/
-RUN dnf5 install --setopt=tsflags=nodocs -y $(grep -v '^\s*#' /tmp/pacotes_desktop | tr '\n' ' ') && \
-    dnf5 install --setopt=tsflags=nodocs -y $(grep -v '^\s*#' /tmp/pacotes_necessarios | tr '\n' ' ') && \
+RUN dnf5 clean all && \
+    dnf5 makecache --refresh && \
+    dnf5 install --setopt=tsflags=nodocs --allowerasing -y \
+        $(grep -v '^\s*#' /tmp/pacotes_desktop /tmp/pacotes_necessarios | tr '\n' ' ') && \
     dnf5 clean all && \
     rm -rf /var/cache/* /var/log/* /tmp/* /var/tmp/*
 
