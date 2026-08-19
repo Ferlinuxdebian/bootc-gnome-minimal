@@ -32,7 +32,7 @@ COPY pacotes_necessarios pacotes_desktop /tmp/
 RUN dnf5 clean all && \
     dnf5 makecache --refresh && \
     dnf5 install --setopt=tsflags=nodocs --allowerasing -y \
-        $(grep -v '^\s*#' /tmp/pacotes_desktop /tmp/pacotes_necessarios | tr '\n' ' ') && \
+        $(grep -h -v '^\s*#' /tmp/pacotes_desktop /tmp/pacotes_necessarios | tr '\n' ' ') && \
     dnf5 clean all && \
     rm -rf /var/cache/* /var/log/* /tmp/* /var/tmp/*
 
