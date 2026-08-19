@@ -24,8 +24,8 @@ RUN kver="$(rpm -q kernel-core --queryformat '%{VERSION}-%{RELEASE}.%{ARCH}')" &
 
 # 2. Instalação dos pacotes essenciais e de desktop com dependências normais
 COPY pacotes_necessarios pacotes_desktop /tmp/
-RUN grep -v '^#' /tmp/pacotes_necessarios | tr '\n' ' ' | xargs -r dnf5 install --setopt=tsflags=nodocs -y && \
-    grep -v '^#' /tmp/pacotes_desktop | tr '\n' ' ' | xargs -r dnf5 install --setopt=tsflags=nodocs -y && \
+RUN grep -v '^#' /tmp/pacotes_necessarios | tr '\n' ' ' | xargs -r dnf5 install --setopt=tsflags=nodocs --exclude=tuned,tuned-gtk,malcontent,malcontent-control,gnome-initial-setup -y && \
+    grep -v '^#' /tmp/pacotes_desktop | tr '\n' ' ' | xargs -r dnf5 install --setopt=tsflags=nodocs --exclude=tuned,tuned-gtk,malcontent,malcontent-control,gnome-initial-setup -y && \
     dnf5 clean all && \
     rm -rf /var/cache/* /var/log/* /tmp/* /var/tmp/*
 
