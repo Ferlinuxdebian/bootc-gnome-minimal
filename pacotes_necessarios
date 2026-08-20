@@ -27,7 +27,6 @@ libepoxy
 lcms2
 libsndfile
 alsa-lib
-wayland-libs
 libX11-xcb
 
 # Pacotes não essenciais (pode ser alterado a gosto)
