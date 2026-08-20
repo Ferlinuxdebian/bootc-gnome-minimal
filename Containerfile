@@ -25,13 +25,13 @@ RUN kver="$(rpm -q kernel-core --queryformat '%{VERSION}-%{RELEASE}.%{ARCH}')" &
 # 2. Instalação mínima do GNOME e alguns pacotes necessários para seu pleno funcionamento
 COPY pacotes_necessarios pacotes_desktop ./
 RUN PKGS=$(grep -v '^#' pacotes_desktop | tr '\n' ' ') && \
-    dnf5 install -y $PKGS --exclude malcontent-control,tuned && \
+    dnf5 install -y --setopt=tsflags=nodocs $PKGS --exclude malcontent-control,tuned && \
     dnf5 clean all && \
     rm -rf /var/cache/* /var/log/* /var/tmp/* pacotes_desktop
 
 # 3. Instalação dos pacotes essenciais e pacotes do meu uso 
 RUN PKGS2=$(grep -v '^#' pacotes_necessarios | tr '\n' ' ') && \
-    dnf5 install -y $PKGS2 && \
+    dnf5 install -y --setopt=tsflags=nodocs $PKGS2 && \
     dnf5 clean all && \
     rm -rf /var/cache/* /var/log/* /var/tmp/* pacotes_necessarios
 
