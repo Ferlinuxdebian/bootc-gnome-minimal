@@ -19,15 +19,6 @@ unzip
 zip
 usbutils
 sysfsutils
-libjpeg-turbo
-libpng
-libwebp
-opus
-libepoxy
-lcms2
-libsndfile
-alsa-lib
-libX11-xcb
 
 # Pacotes não essenciais (pode ser alterado a gosto)
 @virtualization
