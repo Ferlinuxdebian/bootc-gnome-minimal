@@ -31,10 +31,8 @@ RUN PKGS=$(grep -v '^#' pacotes_desktop | tr '\n' ' ') && \
 
 # 3. Instalação dos pacotes essenciais e pacotes do meu uso 
 RUN dnf5 clean all && dnf5 makecache --refresh && \
-    PKGS2=$(grep -v '^#' pacotes_necessarios | tr '\n' ' ') && \
-    for i in 1 2 3; do \
-      dnf5 install -y --setopt=tsflags=nodocs $PKGS2 && break || { echo "tentativa $i falhou, aguardando..."; sleep 20; }; \
-    done && \
+    grep -v '^#' pacotes_necessarios | \
+    xargs -n 20 dnf5 install -y --setopt=tsflags=nodocs && \
     dnf5 clean all && \
     rm -rf /var/cache/* /var/log/* /var/tmp/* pacotes_necessarios
 
