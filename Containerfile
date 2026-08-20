@@ -22,17 +22,15 @@ RUN kver="$(rpm -q kernel-core --queryformat '%{VERSION}-%{RELEASE}.%{ARCH}')" &
     dnf5 clean all && \
     rm -rf /var/cache/* /var/lib/dnf/* /var/log/* /tmp/* /var/tmp/*
 
-# 2. Instalação mínima do GNOME e alguns pacotes necessários para seu pleno funcionamento
-COPY pacotes_necessarios pacotes_desktop ./
-RUN PKGS=$(grep -v '^#' pacotes_desktop | tr '\n' ' ') && \
-    dnf5 install -y --setopt=tsflags=nodocs $PKGS --exclude malcontent-control,tuned && \
+# 2. Instalação mínima do GNOME
+RUN dnf5 install gnome-shell --setopt=tsflags=nodocs --setopt=install_weak_deps=False -y && \
     dnf5 clean all && \
-    rm -rf /var/cache/* /var/log/* /var/tmp/* pacotes_desktop
+    rm -rfv /var/cache/* /var/lib/dnf/* /var/log/* /tmp/* /var/tmp/*
 
 # 3. Instalação dos pacotes essenciais e pacotes do meu uso 
-RUN dnf5 clean all && dnf5 makecache --refresh && \
-    grep -v '^#' pacotes_necessarios | \
-    xargs -n 20 dnf5 install -y --setopt=tsflags=nodocs && \
+COPY pacotes_necessarios pacotes_desktop ./
+RUN grep -v '^#' pacotes_necessarios | tr '\n' ' ' | xargs dnf5 install --setopt=tsflags=nodocs -y && \
+    grep -v '^#' pacotes_desktop | tr '\n' ' ' | xargs dnf5 install --setopt=tsflags=nodocs -y && \
     dnf5 clean all && \
     rm -rf /var/cache/* /var/log/* /var/tmp/* pacotes_necessarios
 
