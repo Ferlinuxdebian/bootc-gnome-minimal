@@ -85,3 +85,7 @@ jobs:
               "docker://${{ steps.meta.outputs.primary }}" \
               "docker://${BASE}:${TAG}"
           done
+      
+      - name: Verificar OOM no kernel
+        if: failure()
+        run: dmesg | grep -i "killed process" || journalctl -k --no-pager | grep -i oom
