@@ -23,17 +23,17 @@ RUN kver="$(rpm -q kernel-core --queryformat '%{VERSION}-%{RELEASE}.%{ARCH}')" &
     rm -rf /var/cache/* /var/lib/dnf/* /var/log/* /tmp/* /var/tmp/*
 
 # 2. Instalação mínima do GNOME e alguns pacotes necessários para seu pleno funcionamento
-COPY pacotes_necessarios pacotes_desktop /tmp/
-RUN PKGS=$(grep -v '^#' /tmp/pacotes_desktop | tr '\n' ' ') && \
+COPY pacotes_necessarios pacotes_desktop ./
+RUN PKGS=$(grep -v '^#' pacotes_desktop | tr '\n' ' ') && \
     dnf5 install -y --setopt=tsflags=nodocs $PKGS --exclude malcontent-control,tuned && \
     dnf5 clean all && \
-    rm -rf /var/cache/* /var/log/* /var/tmp/*
+    rm -rf /var/cache/* /var/log/* /var/tmp/* pacotes_desktop
 
 # 3. Instalação dos pacotes essenciais e pacotes do meu uso 
-RUN PKGS2=$(grep -v '^#' /tmp/pacotes_necessarios | tr '\n' ' ') && \
+RUN PKGS2=$(grep -v '^#' pacotes_necessarios | tr '\n' ' ') && \
     dnf5 install -y --setopt=tsflags=nodocs $PKGS2 && \
     dnf5 clean all && \
-    rm -rf /var/cache/* /var/log/* /var/tmp/*
+    rm -rf /var/cache/* /var/log/* /var/tmp/* pacotes_necessarios
 
 # 4. Configurações, scripts, links do sistema e tratamento de /opt e /usr/local
 COPY 10-nvidia-args.toml locale.conf post-install.sh post-install.service vconsole.conf zram-generator.conf libvirt.conf nvidia-power.conf /tmp/sysconfig/
