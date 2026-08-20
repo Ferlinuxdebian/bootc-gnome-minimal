@@ -30,9 +30,10 @@ RUN PKGS=$(grep -v '^#' /tmp/pacotes_desktop | tr '\n' ' ') && \
     rm -rf /var/cache/* /var/log/* /var/tmp/*
 
 # 3. Instalação dos pacotes essenciais e pacotes do meu uso 
-RUN grep -v '^#' /tmp/pacotes_necessarios | tr '\n' ' ' | xargs -r dnf5 install --setopt=tsflags=nodocs && \
+RUN PKGS2=$(grep -v '^#' /tmp/pacotes_necessarios | tr '\n' ' ') && \
+    dnf5 install -y --setopt=tsflags=nodocs $PKGS2 && \
     dnf5 clean all && \
-    rm -rf /var/cache/* /var/log/* /tmp/* /var/tmp/*
+    rm -rf /var/cache/* /var/log/* /var/tmp/*
 
 # 4. Configurações, scripts, links do sistema e tratamento de /opt e /usr/local
 COPY 10-nvidia-args.toml locale.conf post-install.sh post-install.service vconsole.conf zram-generator.conf libvirt.conf nvidia-power.conf /tmp/sysconfig/
