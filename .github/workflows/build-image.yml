@@ -1,69 +1,53 @@
-name: gnome-minimal build
-
+name: Build e Push da Imagem Bootc
 on:
   schedule:
-    - cron: '0 6 * * *' # Constrói às 6:00 de segunda-feira
+    - cron: '0 5 * * *'
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'README.md'
   workflow_dispatch:
-    inputs:
-      fedora_version:
-        description: 'Versão do Fedora Silverblue'
-        default: '44'
-        required: false
 
 env:
-  IMAGE_NAME: bootc-gnome-minimal
-  REGISTRY: ghcr.io/${{ github.repository_owner }}
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ferlinuxdebian/bootc-gnome-minimal
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  build-push:
-    runs-on: ubuntu-26.04
-    env:
-      SELECTED_VERSION: ${{ github.event.inputs.fedora_version || '44' }}
-      DEFAULT_VERSION: '44'
+  build-and-push:
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
-      id-token: write
 
     steps:
-      - name: Checkout Repo
+      - name: Checkout do código
         uses: actions/checkout@v4
+
+      - name: Liberar espaço em disco
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+            "/usr/local/share/boost" "$AGENT_TOOLSDIRECTORY"
+          df -h
 
       - name: Gerar metadados do build
         id: meta
         run: |
-          VERSION=${{ env.SELECTED_VERSION }}
+          VERSION=$(grep '^FROM' Containerfile | head -n 1 | awk -F: '{print $2}' | awk '{print $1}')
           DATE=$(TZ='America/Sao_Paulo' date +'%Y%m%d-%H%M')
-          VERSIONANDDATE="${VERSION}-${DATE}"
           SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
-          if [ "${{ env.SELECTED_VERSION }}" -gt "${{ env.DEFAULT_VERSION }}" ]; then
-            echo "channel=beta" >> $GITHUB_OUTPUT
-          elif [ "${{ env.SELECTED_VERSION }}" -eq "${{ env.DEFAULT_VERSION }}" ]; then
-            echo "channel=latest" >> $GITHUB_OUTPUT
-          else
-            echo "channel=old" >> $GITHUB_OUTPUT
-          fi
+          PRIMARY="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${VERSION}-${DATE}"
+
           echo "version=${VERSION}"         >> $GITHUB_OUTPUT
-          echo "short_sha=${SHORT_SHA}"     >> $GITHUB_OUTPUT
-          echo "versionanddate=${VERSIONANDDATE}" >> $GITHUB_OUTPUT
+          echo "date=${DATE}"               >> $GITHUB_OUTPUT
+          echo "short_sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
+          echo "primary=${PRIMARY}"         >> $GITHUB_OUTPUT
 
       - name: Login no GHCR
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | sudo podman login \
             -u "${{ github.actor }}" --password-stdin "${{ env.REGISTRY }}"
-
-      - name: Clean Podman containers storage
-        run: |
-          sudo podman system prune --all --force
-          sudo rm -rf /var/lib/containers/storage/overlay-containers
-
-      - name: Assinatura dos módulos de kernel
-        env:
-          PRIVATEKEY_BASE64: ${{ secrets.SECURE_BOOT_KEY }}
-        run: |
-          mkdir -p .anchor
-          echo -n "$PRIVATEKEY_BASE64" | base64 --decode > .anchor/MOK.priv
 
       - name: Build da imagem inicial (como root)
         run: |
@@ -71,39 +55,92 @@ jobs:
             --skip-unused-stages=false \
             --security-opt label=disable \
             -t "localhost/bootc-raw:latest" \
-            -f ./gnome-minimal/Containerfile \
+            -f Containerfile \
             -v "$(pwd):/run/src" \
-            --build-arg FEDORA_VERSION=${{ env.SELECTED_VERSION }} \
             .
 
-      - name: Rechunk via bootc-base-imagectl e remoção
+      - name: Rechunk via bootc-base-imagectl (fedora-bootc:44)
         run: |
           sudo podman run --rm --privileged \
             -v /var/lib/containers:/var/lib/containers \
             quay.io/fedora/fedora-bootc:44 \
             /usr/libexec/bootc-base-imagectl rechunk \
             localhost/bootc-raw:latest \
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.SELECTED_VERSION }}
-          sudo podman rmi localhost/bootc-raw:latest
+            "${{ steps.meta.outputs.primary }}"
 
-      - name: Tags e Push da imagem
+      - name: Push da tag principal otimizada
+        run: sudo podman push "${{ steps.meta.outputs.primary }}"
+
+      - name: Aplicar tags adicionais via skopeo
         run: |
-          REGISTRY_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
-          PRIMARY_TAG="${{ env.SELECTED_VERSION }}"
-          PRIMARY_IMAGE="${REGISTRY_IMAGE}:${PRIMARY_TAG}"
+          VERSION="${{ steps.meta.outputs.version }}"
+          SHORT_SHA="${{ steps.meta.outputs.short_sha }}"
+          BASE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
+          CREDS="${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}"
 
-          sudo skopeo copy \
-            containers-storage:${PRIMARY_IMAGE} \
-            docker://${PRIMARY_IMAGE}
-
-          for TAG in "${{ steps.meta.outputs.versionanddate }}" \
-                     "${{ steps.meta.outputs.short_sha }}" \
-                     "${{ steps.meta.outputs.channel }}" \
-                     "${{ github.sha }}"; do
-
-            [ -z "$TAG" ] || [ "$TAG" = "$PRIMARY_TAG" ] && continue
-
+          for TAG in "${VERSION}-latest" "latest" "main" "sha-${SHORT_SHA}"; do
+            echo "→ Copiando manifesto para :${TAG}"
             sudo skopeo copy \
-              docker://${PRIMARY_IMAGE} \
-              docker://${REGISTRY_IMAGE}:${TAG}
+              --src-creds  "${CREDS}" \
+              --dest-creds "${CREDS}" \
+              "docker://${{ steps.meta.outputs.primary }}" \
+              "docker://${BASE}:${TAG}"
           done
+
+      - name: Criar config.toml para o Builder
+        run: |
+          cat <<EOF > config.toml
+          [customizations.installer.modules]
+          enable = [
+            "org.fedoraproject.Anaconda.Modules.Storage",
+            "org.fedoraproject.Anaconda.Modules.Users",
+            "org.fedoraproject.Anaconda.Modules.Network",
+            "org.fedoraproject.Anaconda.Modules.Timezone"
+          ]
+
+          [customizations.installer.kickstart]
+          contents = """
+          clearpart --all --initlabel
+          zerombr
+
+          # EFI
+          part /boot/efi --fstype=efi --size=600 --fsoptions="umask=0077,shortname=winnt"
+
+          # /boot
+          part /boot --fstype=ext4 --size=2048
+
+          # Partição Btrfs única
+          part btrfs.01 --fstype=btrfs --grow
+
+          # Volume Btrfs
+          btrfs none --label=fedora btrfs.01
+
+          # Subvolumes
+          btrfs /     --subvol --name=root LABEL=fedora
+          btrfs /var  --subvol --name=var  LABEL=fedora
+          btrfs /home --subvol --name=home LABEL=fedora
+          """
+          EOF
+
+      - name: Gerar ISO de instalação
+        run: |
+          mkdir -p ./output
+          sudo podman run \
+            --rm --privileged \
+            --security-opt label=type:unconfined_t \
+            -v ./output:/output \
+            -v ./config.toml:/config.toml:ro \
+            -v /var/lib/containers/storage:/var/lib/containers/storage \
+            quay.io/centos-bootc/bootc-image-builder:latest \
+            --type anaconda-iso --rootfs btrfs \
+            "${{ steps.meta.outputs.primary }}"
+
+          sudo chown -R $USER:$USER ./output
+
+      - name: Upload da ISO como Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gnome-minimal-iso
+          path: ./output/**/install.iso
+          retention-days: 5
+          if-no-files-found: error
