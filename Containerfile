@@ -9,32 +9,29 @@ RUN KERNEL_VERSION="$(rpm -q kernel-core --queryformat '%{VERSION}-%{RELEASE}.%{
 # Segundo estágio: Configuração do sistema e imagem final
 FROM quay.io/fedora/fedora-bootc:44
 
-# 1. Configuração de repostórios e instalação de Kernel Extras + NVIDIA
+# 1. Configuração de repostórios e instalação de Kernel Extras + NVIDIA (SEM RPM -NODEPS)
 COPY --from=builder /etc/yum.repos.d/fedora-nvidia-580.repo /etc/yum.repos.d/
 COPY --from=builder /var/cache/akmods/nvidia/kmod-nvidia*.rpm /tmp/nvidia/
-RUN kver="$(rpm -q kernel-core --queryformat '%{VERSION}-%{RELEASE}.%{ARCH}')" && \
+RUN kver="$(rpm -q kernel-core --queryformat '%{VERSION}-%_release.%_arch')" && \
     dnf5 -y install --setopt=tsflags=nodocs "kernel-modules-extra-${kver}" && \
     dnf5 download --destdir=/tmp/nvidia nvidia-kmod-common nvidia-driver-cuda && \
-    dnf5 -y install --setopt=tsflags=nodocs \
-        /tmp/nvidia/nvidia-kmod-common*.rpm \
-        /tmp/nvidia/nvidia-driver-cuda*.rpm \
-        /tmp/nvidia/kmod-nvidia-*.rpm && \
+    dnf5 -y install --setopt=tsflags=nodocs /tmp/nvidia/*.rpm && \
     rm -rf /tmp/nvidia && \
     dnf5 clean all && \
     rm -rf /var/cache/* /var/lib/dnf/* /var/log/* /tmp/* /var/tmp/*
-
 
 # 2. Instalação mínima do GNOME
 RUN dnf5 install gnome-shell --setopt=tsflags=nodocs --setopt=install_weak_deps=False -y && \
     dnf5 clean all && \
     rm -rfv /var/cache/* /var/lib/dnf/* /var/log/* /tmp/* /var/tmp/*
 
-# 3. Instalação dos pacotes essenciais e pacotes do meu uso 
+# 3. Instalação dos pacotes essenciais e pacotes do meu uso (COMPORTAMENTO PADRÃO DO DNF5)
 COPY pacotes_necessarios pacotes_desktop ./
-RUN grep -v '^#' pacotes_necessarios | tr '\n' ' ' | xargs dnf5 install --setopt=tsflags=nodocs -y && \
-    grep -v '^#' pacotes_desktop | tr '\n' ' ' | xargs dnf5 install --setopt=tsflags=nodocs -y && \
+RUN PACKAGES_NECESSARIOS=$(grep -v '^#' pacotes_necessarios | tr '\n' ' ') && \
+    PACKAGES_DESKTOP=$(grep -v '^#' pacotes_desktop | tr '\n' ' ') && \
+    dnf5 install --setopt=tsflags=nodocs -y ${PACKAGES_NECESSARIOS} ${PACKAGES_DESKTOP} && \
     dnf5 clean all && \
-    rm -rf /var/cache/* /var/log/* /var/tmp/* pacotes_necessarios
+    rm -rf /var/cache/* /var/log/* /var/tmp/* pacotes_necessarios pacotes_desktop
 
 # 4. Configurações, scripts, links do sistema e tratamento de /opt e /usr/local
 COPY 10-nvidia-args.toml locale.conf post-install.sh post-install.service vconsole.conf zram-generator.conf libvirt.conf nvidia-power.conf /tmp/sysconfig/
