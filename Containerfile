@@ -23,6 +23,7 @@ RUN kver="$(rpm -q kernel-core --queryformat '%{VERSION}-%{RELEASE}.%{ARCH}')" &
     rm -rf /var/lib/dnf/* /var/log/* /tmp/* /var/tmp/*
 
 # 2. Instalação mínima do GNOME
+COPY pacotes_necessarios pacotes_desktop ./
 RUN dnf5 install gnome-shell --setopt=tsflags=nodocs --setopt=install_weak_deps=False -y && \
     grep -v '^#' pacotes_necessarios | tr '\n' ' ' | xargs dnf5 install --setopt=tsflags=nodocs -y && \
     grep -v '^#' pacotes_desktop | tr '\n' ' ' | xargs dnf5 install --setopt=tsflags=nodocs -y && \
