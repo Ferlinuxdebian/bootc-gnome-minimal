@@ -1,5 +1,4 @@
-   name: Build e Push da Imagem Bootc
-on:
+name: Build e Push da Imagem Bootcon:
   schedule:
     - cron: '0 10 * * *'
   push:
@@ -8,12 +7,10 @@ on:
     paths-ignore:
       - 'README.md'
   workflow_dispatch:
-
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ferlinuxdebian/bootc-gnome-minimal
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
@@ -49,12 +46,10 @@ jobs:
           echo "date=${DATE}"           >> $GITHUB_OUTPUT
           echo "short_sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
           echo "primary=${PRIMARY}"     >> $GITHUB_OUTPUT
-
       - name: Login no GHCR
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | sudo podman login \
             -u "${{ github.actor }}" --password-stdin "${{ env.REGISTRY }}"
-
       # ADICIONADO: Flags --no-cache e --rm para evitar o acúmulo de lixo entre as camadas do dnf/rpm
       - name: Build da imagem inicial (como root)
         run: |
@@ -67,7 +62,6 @@ jobs:
             -f Containerfile \
             -v "$(pwd):/run/src" \
             .
-
       - name: Rechunk via bootc-base-imagectl (fedora-bootc:44)
         run: |
           sudo podman run --rm --privileged \
@@ -76,7 +70,6 @@ jobs:
             /usr/libexec/bootc-base-imagectl rechunk \
             localhost/bootc-raw:latest \
             "${{ steps.meta.outputs.primary }}"
-
       - name: Push da tag principal otimizada
         run: sudo podman push "${{ steps.meta.outputs.primary }}"
 
@@ -95,7 +88,6 @@ jobs:
               "docker://${{ steps.meta.outputs.primary }}" \
               "docker://${BASE}:${TAG}"
           done
-      
-      - name: Verificar OOM no kernel
+            - name: Verificar OOM no kernel
         if: failure()
         run: dmesg | grep -i "killed process" || journalctl -k --no-pager | grep -i oom
