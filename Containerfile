@@ -9,13 +9,13 @@ RUN KERNEL_VERSION="$(rpm -q kernel-core --queryformat '%{VERSION}-%{RELEASE}.%{
 # Segundo estágio: Configuração do sistema e imagem final
 FROM quay.io/fedora/fedora-bootc:44
 
-# 1. Configuração de repostórios e instalação de Kernel Extras + NVIDIA (SEM RPM -NODEPS)
+# 1. Configuração de repositórios e instalação de Kernel Extras + NVIDIA
 COPY --from=builder /etc/yum.repos.d/fedora-nvidia-580.repo /etc/yum.repos.d/
 COPY --from=builder /var/cache/akmods/nvidia/kmod-nvidia*.rpm /tmp/nvidia/
-RUN kver="$(rpm -q kernel-core --queryformat '%{VERSION}-%_release.%_arch')" && \
+RUN kver="$(rpm -q kernel-core --queryformat '%{VERSION}-%{RELEASE}.%{ARCH}')" && \
     dnf5 -y install --setopt=tsflags=nodocs "kernel-modules-extra-${kver}" && \
     dnf5 download --destdir=/tmp/nvidia nvidia-kmod-common nvidia-driver-cuda && \
-    dnf5 -y install --setopt=tsflags=nodocs /tmp/nvidia/*.rpm && \
+    dnf5 -y install --setopt=tsflags=nodocs /tmp/nvidia/nvidia-kmod-common*.rpm /tmp/nvidia/nvidia-driver-cuda*.rpm /tmp/nvidia/kmod-nvidia-*.rpm && \
     rm -rf /tmp/nvidia && \
     dnf5 clean all && \
     rm -rf /var/cache/* /var/lib/dnf/* /var/log/* /tmp/* /var/tmp/*
