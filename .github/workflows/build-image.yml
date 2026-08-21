@@ -23,7 +23,7 @@ jobs:
       - name: Checkout do código
         uses: actions/checkout@v4
 
-      # Remove o entulho do GitHub e joga o Podman para o disco gigante (/mnt)
+      # Limpa o lixo e joga a pasta interna do Podman para o disco gigante de 60GB (/mnt)
       - name: Liberar Espaço Máximo e Configurar Podman
         run: |
           echo "=== Removendo arquivos inúteis do runner ==="
@@ -43,6 +43,9 @@ jobs:
           echo "=== Redirecionando pastas temporárias do sistema ==="
           export TMPDIR=/mnt/tmp
           export O_TMPDIR=/mnt/tmp
+          
+          echo "=== Forçando limpeza total de caches residuais do Podman no host ==="
+          sudo podman system prune --all --force || true
           
           echo "=== Verificação de espaço inicial ==="
           df -h
@@ -64,11 +67,13 @@ jobs:
           echo "${{ secrets.GITHUB_TOKEN }}" | sudo podman login \
             -u "${{ github.actor }}" --password-stdin "${{ env.REGISTRY }}"
 
+      # ADICIONADO: Flag --pull para forçar o download limpo da base do Fedora sem usar imagens guardadas na VM
       - name: Build Podman
         run: |
           export TMPDIR=/mnt/tmp
           sudo -E podman build \
             --no-cache \
+            --pull \
             --rm \
             --skip-unused-stages=false \
             --security-opt label=disable \
