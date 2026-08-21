@@ -24,15 +24,10 @@ RUN kver="$(rpm -q kernel-core --queryformat '%{VERSION}-%{RELEASE}.%{ARCH}')" &
 
 # 2. Instalação mínima do GNOME
 RUN dnf5 install gnome-shell --setopt=tsflags=nodocs --setopt=install_weak_deps=False -y && \
-    dnf5 clean all && \
-    rm -rfv /var/lib/dnf/* /var/log/* /tmp/* /var/tmp/*
-
-# 3. Instalação dos pacotes essenciais e pacotes do meu uso 
-COPY pacotes_necessarios pacotes_desktop ./
-RUN grep -v '^#' pacotes_necessarios | tr '\n' ' ' | xargs dnf5 install --setopt=tsflags=nodocs -y && \
+    grep -v '^#' pacotes_necessarios | tr '\n' ' ' | xargs dnf5 install --setopt=tsflags=nodocs -y && \
     grep -v '^#' pacotes_desktop | tr '\n' ' ' | xargs dnf5 install --setopt=tsflags=nodocs -y && \
     dnf5 clean all && \
-    rm -rf /var/log/* /var/tmp/* pacotes_necessarios
+    rm -rfv /var/lib/dnf/* /var/log/* /tmp/* /var/tmp/*
 
 # 4. Configurações, scripts, links do sistema e tratamento de /opt e /usr/local
 COPY 10-nvidia-args.toml locale.conf post-install.sh post-install.service vconsole.conf zram-generator.conf libvirt.conf nvidia-power.conf /tmp/sysconfig/
