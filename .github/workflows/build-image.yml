@@ -20,23 +20,34 @@ jobs:
       packages: write
 
     steps:
-      # Modificado para expandir a raiz total do sistema, salvando o /var/lib/containers do Podman
-      - name: Expandir Disco na Raiz do Sistema
-        uses: easimon/maximize-build-space@master
-        with:
-          root-reserve-mb: 5120
-          swap-size-mb: 1024
-          build-mount-path: '/'
-          remove-dotnet: 'true'
-          remove-android: 'true'
-          remove-haskell: 'true'
-          remove-codeql: 'true'
-          remove-docker-images: 'true'
-
-      - name: Checkout
+      - name: Checkout do código
         uses: actions/checkout@v4
 
-      - name: Metadados
+      # Remove o entulho do GitHub e joga o Podman para o disco gigante (/mnt)
+      - name: Liberar Espaço Máximo e Configurar Podman
+        run: |
+          echo "=== Removendo arquivos inúteis do runner ==="
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+            /usr/local/share/boost /opt/hostedtoolcache/CodeQL /usr/libexec/docker
+          
+          echo "=== Criando estrutura no disco secundário (/mnt) ==="
+          sudo mkdir -p /mnt/podman /mnt/tmp
+          sudo chmod 777 /mnt/podman /mnt/tmp
+          
+          echo "=== Apagando dados antigos do Podman ==="
+          sudo rm -rf /var/lib/containers
+          
+          echo "=== Criando link simbólico para desviar o espaço do Podman ==="
+          sudo ln -s /mnt/podman /var/lib/containers
+          
+          echo "=== Redirecionando pastas temporárias do sistema ==="
+          export TMPDIR=/mnt/tmp
+          export O_TMPDIR=/mnt/tmp
+          
+          echo "=== Verificação de espaço inicial ==="
+          df -h
+
+      - name: Gerar metadados do build
         id: meta
         run: |
           VERSION=$(grep '^FROM' Containerfile | head -n 1 | awk -F: '{print $2}' | awk '{print $1}')
@@ -55,7 +66,8 @@ jobs:
 
       - name: Build Podman
         run: |
-          sudo podman build \
+          export TMPDIR=/mnt/tmp
+          sudo -E podman build \
             --no-cache \
             --rm \
             --skip-unused-stages=false \
@@ -67,7 +79,8 @@ jobs:
 
       - name: Rechunk Bootc
         run: |
-          sudo podman run --rm --privileged \
+          export TMPDIR=/mnt/tmp
+          sudo -E podman run --rm --privileged \
             -v /var/lib/containers:/var/lib/containers \
             quay.io/fedora/fedora-bootc:44 \
             /usr/libexec/bootc-base-imagectl rechunk \
