@@ -1,111 +1,109 @@
-name: Build e Push da Imagem Bootc
+name: gnome-minimal build
+
 on:
   schedule:
-    - cron: '0 10 * * *'
-  push:
-    branches: [main]
-    paths-ignore: ['README.md']
+    - cron: '0 6 * * *' # Constrói às 6:00 de segunda-feira
   workflow_dispatch:
+    inputs:
+      fedora_version:
+        description: 'Versão do Fedora Silverblue'
+        default: '44'
+        required: false
 
 env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ferlinuxdebian/bootc-gnome-minimal
+  IMAGE_NAME: bootc-gnome-minimal
+  REGISTRY: ghcr.io/${{ github.repository_owner }}
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  build-and-push:
-    runs-on: ubuntu-latest
+  build-push:
+    runs-on: ubuntu-26.04
+    env:
+      SELECTED_VERSION: ${{ github.event.inputs.fedora_version || '44' }}
+      DEFAULT_VERSION: '44'
     permissions:
       contents: read
       packages: write
+      id-token: write
 
     steps:
-      - name: Checkout do código
+      - name: Checkout Repo
         uses: actions/checkout@v4
-
-      # Limpa o lixo e joga a pasta interna do Podman para o disco gigante de 60GB (/mnt)
-      - name: Liberar Espaço Máximo e Configurar Podman
-        run: |
-          echo "=== Removendo arquivos inúteis do runner ==="
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
-            /usr/local/share/boost /opt/hostedtoolcache/CodeQL /usr/libexec/docker
-          
-          echo "=== Criando estrutura no disco secundário (/mnt) ==="
-          sudo mkdir -p /mnt/podman /mnt/tmp
-          sudo chmod 777 /mnt/podman /mnt/tmp
-          
-          echo "=== Apagando dados antigos do Podman ==="
-          sudo rm -rf /var/lib/containers
-          
-          echo "=== Criando link simbólico para desviar o espaço do Podman ==="
-          sudo ln -s /mnt/podman /var/lib/containers
-          
-          echo "=== Redirecionando pastas temporárias do sistema ==="
-          export TMPDIR=/mnt/tmp
-          export O_TMPDIR=/mnt/tmp
-          
-          echo "=== Forçando limpeza total de caches residuais do Podman no host ==="
-          sudo podman system prune --all --force || true
-          
-          echo "=== Verificação de espaço inicial ==="
-          df -h
 
       - name: Gerar metadados do build
         id: meta
         run: |
-          VERSION=$(grep '^FROM' Containerfile | head -n 1 | awk -F: '{print $2}' | awk '{print $1}')
+          VERSION=${{ env.SELECTED_VERSION }}
           DATE=$(TZ='America/Sao_Paulo' date +'%Y%m%d-%H%M')
+          VERSIONANDDATE="${VERSION}-${DATE}"
           SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
-          PRIMARY="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${VERSION}-${DATE}"
-          echo "version=${VERSION}"     >> $GITHUB_OUTPUT
-          echo "date=${DATE}"           >> $GITHUB_OUTPUT
-          echo "short_sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
-          echo "primary=${PRIMARY}"     >> $GITHUB_OUTPUT
+          if [ "${{ env.SELECTED_VERSION }}" -gt "${{ env.DEFAULT_VERSION }}" ]; then
+            echo "channel=beta" >> $GITHUB_OUTPUT
+          elif [ "${{ env.SELECTED_VERSION }}" -eq "${{ env.DEFAULT_VERSION }}" ]; then
+            echo "channel=latest" >> $GITHUB_OUTPUT
+          else
+            echo "channel=old" >> $GITHUB_OUTPUT
+          fi
+          echo "version=${VERSION}"         >> $GITHUB_OUTPUT
+          echo "short_sha=${SHORT_SHA}"     >> $GITHUB_OUTPUT
+          echo "versionanddate=${VERSIONANDDATE}" >> $GITHUB_OUTPUT
 
-      - name: Login GHCR
+      - name: Login no GHCR
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | sudo podman login \
             -u "${{ github.actor }}" --password-stdin "${{ env.REGISTRY }}"
 
-      # ADICIONADO: Flag --pull para forçar o download limpo da base do Fedora sem usar imagens guardadas na VM
-      - name: Build Podman
+      - name: Clean Podman containers storage
         run: |
-          export TMPDIR=/mnt/tmp
-          sudo -E podman build \
-            --no-cache \
-            --pull \
-            --rm \
+          sudo podman system prune --all --force
+          sudo rm -rf /var/lib/containers/storage/overlay-containers
+
+      - name: Assinatura dos módulos de kernel
+        env:
+          PRIVATEKEY_BASE64: ${{ secrets.SECURE_BOOT_KEY }}
+        run: |
+          mkdir -p .anchor
+          echo -n "$PRIVATEKEY_BASE64" | base64 --decode > .anchor/MOK.priv
+
+      - name: Build da imagem inicial (como root)
+        run: |
+          sudo podman build \
             --skip-unused-stages=false \
             --security-opt label=disable \
             -t "localhost/bootc-raw:latest" \
-            -f Containerfile \
+            -f ./gnome-minimal/Containerfile \
             -v "$(pwd):/run/src" \
+            --build-arg FEDORA_VERSION=${{ env.SELECTED_VERSION }} \
             .
 
-      - name: Rechunk Bootc
+      - name: Rechunk via bootc-base-imagectl e remoção
         run: |
-          export TMPDIR=/mnt/tmp
-          sudo -E podman run --rm --privileged \
+          sudo podman run --rm --privileged \
             -v /var/lib/containers:/var/lib/containers \
             quay.io/fedora/fedora-bootc:44 \
             /usr/libexec/bootc-base-imagectl rechunk \
             localhost/bootc-raw:latest \
-            "${{ steps.meta.outputs.primary }}"
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.SELECTED_VERSION }}
+          sudo podman rmi localhost/bootc-raw:latest
 
-      - name: Push Principal
-        run: sudo podman push "${{ steps.meta.outputs.primary }}"
-
-      - name: Tags Skopeo
+      - name: Tags e Push da imagem
         run: |
-          VERSION="${{ steps.meta.outputs.version }}"
-          SHORT_SHA="${{ steps.meta.outputs.short_sha }}"
-          BASE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
-          CREDS="${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}"
-          for TAG in "${VERSION}-latest" "latest" "main" "sha-${SHORT_SHA}"; do
-            sudo skopeo copy --src-creds "${CREDS}" --dest-creds "${CREDS}" \
-              "docker://${{ steps.meta.outputs.primary }}" "docker://${BASE}:${TAG}"
+          REGISTRY_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
+          PRIMARY_TAG="${{ env.SELECTED_VERSION }}"
+          PRIMARY_IMAGE="${REGISTRY_IMAGE}:${PRIMARY_TAG}"
+
+          sudo skopeo copy \
+            containers-storage:${PRIMARY_IMAGE} \
+            docker://${PRIMARY_IMAGE}
+
+          for TAG in "${{ steps.meta.outputs.versionanddate }}" \
+                     "${{ steps.meta.outputs.short_sha }}" \
+                     "${{ steps.meta.outputs.channel }}" \
+                     "${{ github.sha }}"; do
+
+            [ -z "$TAG" ] || [ "$TAG" = "$PRIMARY_TAG" ] && continue
+
+            sudo skopeo copy \
+              docker://${PRIMARY_IMAGE} \
+              docker://${REGISTRY_IMAGE}:${TAG}
           done
-      
-      - name: Debug OOM
-        if: failure()
-        run: dmesg | grep -i "killed process" || journalctl -k --no-pager | grep -i oom
