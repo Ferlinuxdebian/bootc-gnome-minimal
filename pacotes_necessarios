@@ -19,6 +19,7 @@ unzip
 zip
 usbutils
 sysfsutils
+ncdu
 
 # Pacotes não essenciais (pode ser alterado a gosto)
 @virtualization
